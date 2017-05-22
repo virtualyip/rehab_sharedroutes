@@ -1,0 +1,1 @@
+var firebase = new Firebase("https://vocal-camera-168209.firebaseio.com/");
