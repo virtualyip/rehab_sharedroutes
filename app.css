@@ -1,6 +1,29 @@
-
+body {
+	font-family: Roboto, Arial, sans-serif;
+	font-size: 13px;
+}
+::-webkit-input-placeholder { /* WebKit, Blink, Edge */
+	color:    #ddd;
+}
+:-moz-placeholder { /* Mozilla Firefox 4 to 18 */
+	color:    #ddd;
+	opacity:  1;
+}
+::-moz-placeholder { /* Mozilla Firefox 19+ */
+	color:    #ddd;
+	opacity:  1;
+}
+:-ms-input-placeholder { /* Internet Explorer 10-11 */
+	color:    #ddd;
+}
+::-ms-input-placeholder { /* Microsoft Edge */
+	color:    #ddd;
+}
 /* Always set the map height explicitly to define the size of the div
 * element that contains the map. */
+#title-bar {
+	margin: 20px;
+}
 #map {
 	height: 100%;
 }
@@ -12,27 +35,138 @@
 	z-index: 1;
 	overflow: scroll;
 }
+.searchbox-newstop {
+	margin-bottom: 200px;
+	background: #3367D6;
+	color: #fff;
+}
 .searchbox-container {
-
+	padding: 10px 10px 0px 10px;
+	border: 1px solid #ddd;
 }
 .searchbox-handle {
-	position: absolute;
-	left: 0;
+	float: left;
+	padding: 5px 10px;
 }
 .searchbox {
 	position: relative;
 	width: auto;
 	margin: 0;
 	outline: none;
-	padding: 8px 20px 2px 20px;
+	width: 100%;
+}
+.searchbox .searchbox-title {
+	min-width: 100px;
+	width: 100px;
+	padding: 5px 10px;
+	vertical-align: top;
+}
+.searchbox .searchbox-input {
+	padding: 5px 10px;
+	vertical-align: top;
+}
+.searchbox .searchbox-input input{
+	width: 100%;
+	border: 0;
+	border-bottom: 1px solid #fff;
+	color: #fff;
+	background: transparent;
+	padding: 5px 10px;
+}
+.searchbox .customer-input {
+	padding: 5px;
+	background: #fff;
+	color: #888;
+}
+.searchbox .customer-input .input-group-addon {
+	padding: 0px 8px !important;
+	border: 0;
+	background: #fff;
+}
+.searchbox .customer-input input{
+	border: 0;
+	border-bottom: 1px solid #888;
+	color: #666;
+}
+.searchbox .customer-input .delete-btn{
+	border: 0;
+	background: transparent;
+	color: #888;
+}
+.searchbox .searchbox-btn {
+	width: 15%;
+	padding: 5px 10px;
 }
 .searchbox-menu {
 	position: absolute;
 	right: 0;
+}
+.address-label {
+	background: #eee;
+	padding: 5px 10px;
+	border-radius: 5px;
+	display: inline-block;
+	max-width: 90%;
+	margin: 0 0 5px 0;
+}
+.address-label img {
+	width: 20px;
+	height: 20px;
+}
+.customer-label {
+	background: #5cb85c;
+	padding: 5px 10px;
+	border-radius: 5px;
+	max-width: 20%;
+	overflow: hidden;
+	line-height: 30px;
+	font-size: 10px;
+	color: #fff;
+}
+#result {
+	margin: 20px;
+}
+#result .customer-col {
+	width: 15%;
+	min-width: 60px;
+	border-bottom: 1px solid #ddd;
+	padding-bottom: 20px;
+	vertical-align: top;
+	padding-top: 5px;
+	word-break: break-all;
+}
+#result .route-col {
+	border-bottom: 1px solid #ddd;
+	padding-bottom: 20px;
+	vertical-align: top;
+	padding-top: 5px;
+	word-break: break-all;
+}
+#result .fee-col {
+	width: 25%;
+	min-width: 80px;
+	text-align: right;
+	font-size: 10px;
+	border-bottom: 1px solid #ddd;
+	padding-bottom: 20px;
+	vertical-align: top;
+	padding: 10px 10px 0 0;
+	word-break: break-all;
+}
+.remark {
+	font-size: 10px;
+	margin: 20px;
 }
 /* Optional: Makes the sample page fill the window. */
 html, body {
 	height: 100%;
 	margin: 0;
 	padding: 0;
+}
+.color-warning {
+	background: rgb(238, 162, 54);
+	color: #fff;
+}
+.img-btn {
+	cursor: pointer;
 }

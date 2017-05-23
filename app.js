@@ -21,6 +21,7 @@ angular.module('app', [])
 	        // pressed the Enter key, or the Place Details request failed.
 	        console.log("No details available for input: '" + place.name + "'");
 	        scope.stop._place = null;
+	        window.app.$apply();
 	        return;
 	      }
 
@@ -55,6 +56,23 @@ angular.module('app', [])
     streetViewControl: false,
   });
 
+
+  var directionsService = new google.maps.DirectionsService;
+  var directionsDisplay = new google.maps.DirectionsRenderer({
+  	draggable: true,
+  	map: map,
+  	suppressMarkers : true,
+  });
+  directionsDisplay.addListener('directions_changed', function() {
+  	app.computeTotalDistance(directionsDisplay.getDirections());
+  });
+
+  function deleteAllMarkers() {
+  	app.markers.forEach(function(marker){
+  		marker.setMap(null);
+  	}); 
+  }
+
   /**
   * default app configuration 
   */
@@ -84,6 +102,7 @@ angular.module('app', [])
 	//a global variable used on all funciton
 	var app = $scope;
 	app.map = map;
+	app.markers = [];
 	app.data = data;
 	app.config = config;
 	window.app = app;
@@ -193,44 +212,83 @@ angular.module('app', [])
   		},
   	};
 
+  	app.data.stops.push(stop);
 		//calcular the distance
-		if(app.data.stops.length >= 1){
-			var last_stop = app.data.stops.length - 1;
-			getDistance(app.data.stops[last_stop].location, stop.location).then(function(response){
-				console.log('getDistance', response);
-				stop.distance = response.rows[0].elements[0].distance.value;
-				stop.duration = response.rows[0].elements[0].duration.value;
-				app.updateRouteFee();
-				app.$apply();
-			}).fail(function(status){
-				stop.distance = null;
-			});
-		}
-
-		app.data.stops.push(stop);
-
-		//apply new data change
-		//app.$apply();
+		app.getDirections();
+		/*
+		getDistance(app.data.stops[last_stop].location, stop.location).then(function(response){
+			console.log('getDistance', response);
+			stop.distance = response.rows[0].elements[0].distance.value;
+			stop.duration = response.rows[0].elements[0].duration.value;
+			app.updateRouteFee();
+			app.$apply();
+		}).fail(function(status){
+			stop.distance = null;
+		});
+		*/
 
 		//clear the temp var
 		delete app.data.new_stop._input_address;
 		delete app.data.new_stop._place;
 
+		//UI markInfoMarkerOnMap
+		app.markInfoMarkerOnMap(stop, app.data.stops.length);
+
+		//store data
+		dataStore();
+	}
+
+	app.updateStop = function(stop, place){
+		stop.place_id = place.place_id;
+		//stop.name = place.name;
+		stop.formatted_address = place.formatted_address;
+		stop.location.lat = place.geometry.location.lat();
+		stop.location.lng = place.geometry.location.lng();
+	}
+
+	app.markInfoMarkerOnMap = function(stop, stop_no){
+		//mark the start point marker
+		var marker_info = {
+			position: stop.location,
+			map: map,
+			draggable: true,
+			title: "第"+(stop_no+1)+"站",
+			icon: 'http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld='+(stop_no+1)+'|FE6256|000000'
+		};
+		var marker = new google.maps.Marker(marker_info);
+		marker.addListener('dragend', function(event){
+			console.log('dragend', event);
+			stop.location.lat = event.latLng.lat();
+			stop.location.lng = event.latLng.lng();
+			stop.name = null;
+			app.getDirections();
+		});
+		//markersArray.push(marker);
+		app.markers[stop_no] = marker;
 	}
 
 	app.editStop = function(stop, stop_no) {
 		console.log('editStop', stop);
 		if(stop.isEditing){
 			stop.isEditing = false;
+			app.data.customers.forEach(function(customer){
+				customer.pick = customer._pick;
+				customer.drop = customer._drop;
+				delete customer._pick;
+				delete customer._drop;
+			});
 			if(stop._place != null){
+				app.updateStop(stop, stop._place);
 				stop.input_address = stop._input_address;
-				stop.name =  stop._place.name;
-				stop.formatted_address =  stop._place.formatted_address;
-				stop.location.lat =  stop._place.geometry.location.lat();
-				stop.location.lng =  stop._place.geometry.location.lng();
+				stop.name = stop._place.name;
 				delete stop._input_address;
 				delete stop._place;
 
+				app.getDirections();
+
+				//store data
+				dataStore();
+				/*
 				//get new distance for previous stop and next stop
 				var prev_stop = app.data.stops[stop_no-1];
 				if(prev_stop){
@@ -258,17 +316,12 @@ angular.module('app', [])
 						stop.distance = null;
 					});
 				}
+				*/
 			}
-			app.data.customers.forEach(function(customer){
-				customer.pick = customer._pick;
-				customer.drop = customer._drop;
-				delete customer._pick;
-				delete customer._drop;
-			});
 		}else{
 			stop.isEditing = true;
 			//create temp var for editing
-			stop._input_address = stop.input_address;
+			stop._input_address = stop.formatted_address;
 			app.data.customers.forEach(function(customer){
 				if(customer._pick == null){
 					customer._pick = customer.pick;
@@ -313,6 +366,102 @@ angular.module('app', [])
     */
   }
 
+  app.removeStop = function(stop_no){
+  	app.data.customers.forEach(function(customer){
+  		if(customer.pick == stop_no){
+  			customer.pick = null;
+  			customer.drop = null;
+  		}
+  		if(customer.drop == stop_no){
+  			customer.drop = null;
+  		}
+  	});
+  	app.data.stops[stop_no].marker.setMap(null);
+  	app.data.stops.splice(stop_no, 1);
+  	app.getDirections();
+  	app.$apply();
+  }
+
+  app.getDirections = function(){
+  	var totalStop = app.data.stops.length;
+  	if(totalStop < 2) return;
+  	
+  	var origin = app.data.stops[0].location;
+  	var destination = app.data.stops[totalStop - 1].location;
+  	var waypoints = [];
+  	for(i = 1; i < totalStop - 1; i++){
+  		waypoints.push({
+  			location:{
+  				lat:app.data.stops[i].location.lat,
+  				lng:app.data.stops[i].location.lng
+  			},
+  			stopover: true
+  		});
+  	}
+  	directionsService.route({
+  		origin: origin,
+  		destination: destination,
+  		waypoints: waypoints,
+  		travelMode: 'DRIVING',
+  	}, function(response, status) {
+  		if (status === 'OK') {
+  			directionsDisplay.setDirections(response);
+  		} else {
+  			console.log('Could not display directions due to: ' + status);
+  		}
+  	});
+
+  	//mark marker on map
+  	app.data.stops.forEach(function(stop, stop_no){
+  		if(app.markers[stop_no] == null){
+  			app.markInfoMarkerOnMap(stop, stop_no);
+  		}else{
+  			app.markers[stop_no].setPosition(stop.location);
+  		}
+  	});
+  }
+
+  app.computeTotalDistance = function(result) {
+  	var total = 0;
+  	var myroute = result.routes[0];
+  	for (var i = 0; i < myroute.legs.length; i++) {
+  		total += myroute.legs[i].distance.value;
+  		app.data.stops[i].formatted_address = myroute.legs[i].start_address;
+  		app.data.stops[i].location.lat = myroute.legs[i].start_location.lat();
+  		app.data.stops[i].location.lng = myroute.legs[i].start_location.lng();
+  		app.data.stops[i+1].distance = myroute.legs[i].distance.value;
+  		app.data.stops[i+1].duration = myroute.legs[i].duration.value;
+  		app.data.stops[i+1].formatted_address = myroute.legs[i].end_address;
+  		app.data.stops[i+1].location.lat = myroute.legs[i].end_location.lat();
+  		app.data.stops[i+1].location.lng = myroute.legs[i].end_location.lng();
+  	}
+  	total = total / 1000;
+  	console.log(result, total + ' km');
+  	app.updateRouteFee();
+  	app.$apply();
+
+		//store data
+		dataStore();
+
+  	/*
+  	//update map address
+  	var service = new google.maps.places.PlacesService(map);
+  	app.data.stops.forEach(function(stop, i){
+  		if(result.geocoded_waypoints[i].geocoder_status == 'OK'){
+  			service.getDetails({
+  				placeId: result.geocoded_waypoints[i].place_id,
+  			}, function(place, status) {
+  				if (status === google.maps.places.PlacesServiceStatus.OK) { 
+  					//console.log(place); 
+  					app.updateStop(stop, place);
+  					app.$apply();
+  				}
+  			});
+  		}
+  	});
+  	*/
+  }
+
   function getDistance(origin, destination){
 
   	var deferred = $.Deferred();
@@ -334,13 +483,6 @@ angular.module('app', [])
   			var bounds = new google.maps.LatLngBounds;
   			var geocoder = new google.maps.Geocoder;
 
-  			var markersArray = [];
-  			function deleteMarkers(markersArray) {
-  				for (var i = 0; i < markersArray.length; i++) {
-  					markersArray[i].setMap(null);
-  				}
-  				markersArray = [];
-  			}
 
   			var originList = response.originAddresses;
   			var destinationList = response.destinationAddresses;
@@ -392,6 +534,23 @@ angular.module('app', [])
   			}
 
   			deferred.resolve(response);
+
+  			//UI
+  			var directionsService = new google.maps.DirectionsService;
+  			var directionsDisplay = new google.maps.DirectionsRenderer;
+  			directionsDisplay.setMap(map);
+  			directionsService.route({
+  				origin: origin, 
+  				destination: destination,
+  				travelMode: 'DRIVING'
+  			}, function(response, status) {
+  				if (status === 'OK') {
+  					console.log(response);
+  					directionsDisplay.setDirections(response);
+  				} else {
+  					console.log('Directions request failed due to ' + status);
+  				}
+  			});
   		}
   	}
 
@@ -403,8 +562,8 @@ angular.module('app', [])
   app.updateRouteFee = function(){
   	app.data.customers.forEach(function(customer){
   		if(customer.pick != null && customer.drop != null){
-  			customer.pickAddress = app.data.stops[customer.pick].formatted_address + ', ' + app.data.stops[customer.pick].name;
-  			customer.dropAddress = app.data.stops[customer.drop].formatted_address + ', ' + app.data.stops[customer.drop].name;
+  			//customer.pickAddress = app.data.stops[customer.pick].formatted_address + ', ' + app.data.stops[customer.pick].name;
+  			//customer.dropAddress = app.data.stops[customer.drop].formatted_address + ', ' + app.data.stops[customer.drop].name;
 
   			customer.totalDistance = 0; 
   			customer.totalDuration = 0; 
@@ -420,7 +579,7 @@ angular.module('app', [])
 
   			//fee calcution
   			customer.distanceFee = Math.trunc(customer.totalDistance/1000 + 1) * app.config.distanceFee; 
-  			customer.durationFee = Math.trunc(customer.totalDuration/3600) * app.config.durationFee;
+  			customer.durationFee = Math.trunc(Math.max(0,customer.totalDuration/60-60)) * app.config.durationFee;
   			customer.totalFee = app.config.initFee + app.config.adminFee + customer.distanceFee + customer.durationFee;
 
   			//shared route discount
@@ -460,8 +619,39 @@ angular.module('app', [])
 		    console.log('Logged in!', user);
 		    app.data.isAnonymous = user.isAnonymous;
 		    app.data.routeId = user.uid;
+
 		    onAuthSuccess();
 		    app.$apply();
+
+		    //console.log(window.localStorage.getItem(app.data.routeId));
+		    if(QueryString.routeId != null){
+		    	var ref = firebase.database().ref('routes/'+QueryString.routeId);
+		    	ref.once('value', function(snap) {
+	          console.log('firebase data', snap.val());  // Add click with same timestamp.
+	          app.data = angular.fromJson(snap.val());
+	          app.getDirections();
+	          app.$apply();
+	        }, function(err) {
+	        	console.warn(err);
+	        });
+		    }else{
+		    	var ref = firebase.database().ref('routes/'+app.data.routeId);
+		    	ref.once('value', function(snap) {
+	          console.log('own firebase data', snap.val());  // Add click with same timestamp.
+	          app.data = angular.fromJson(snap.val());
+	          app.getDirections();
+	          app.$apply();
+	        }, function(err) {
+	        	console.warn(err);
+	        	if(window.localStorage.getItem(app.data.routeId) != null){
+	        		app.data = angular.fromJson(window.localStorage.getItem(app.data.routeId));
+	        		app.getDirections();
+	        		app.$apply();
+	        	}else{
+	        		dataStore();
+	        	}
+	        });
+		    } 
 		  } else {
 		    // User is signed out.
 		    console.log('Logged out!', 'error');
@@ -523,7 +713,7 @@ angular.module('app', [])
    *     this function is called with the current timestamp to add the
    *     click to the firebase.
    */
-   function getTimestamp(addClick) {
+   function getTimestamp(cb) {
     // Reference to location for saving the last click time.
     var ref = firebase.database().ref('last_message/' + app.data.routeId);
 
@@ -535,7 +725,7 @@ angular.module('app', [])
       	console.log(err);
       } else {  // Write to last message was successful.
       	ref.once('value', function(snap) {
-          addClick(snap.val());  // Add click with same timestamp.
+          cb(snap.val());  // Add click with same timestamp.
         }, function(err) {
         	console.warn(err);
         });
@@ -543,20 +733,63 @@ angular.module('app', [])
     });
   }
 
+  function dataStore(){
+  	console.log('storing data');
+  	//store locally
+  	window.localStorage.setItem(app.data.routeId, angular.toJson(app.data));
+		//store in firebase
+		addToFirebase();
+	}
+
   /**
    * Adds a click to firebase.
    * @param {Object} data The data to be added to firebase.
    *     It contains the lat, lng, sender and timestamp.
    */
-   function addToFirebase(data) {
+   function addToFirebase() {
    	getTimestamp(function(timestamp) {
       // Add the new timestamp to the record data.
       app.data.timestamp = timestamp;
-      var ref = firebase.database().ref('clicks').push(app.data, function(err) {
+      var ref = firebase.database().ref('routes/'+app.data.routeId);
+      ref.set(angular.toJson(app.data), function(err) {
         if (err) {  // Data was not written to firebase.
         	console.warn(err);
+        } else {  // Write to last message was successful.
+        	ref.once('value', function(snap) {
+	          console.log('data stored');  // Add click with same timestamp.
+	        }, function(err) {
+	        	console.warn(err);
+	        });
         }
       });
     });
    }
- }]);
+
+   app.intToAlpha = function(i){
+   	return String.fromCharCode(65 + i);
+   }
+
+   var QueryString = function () {
+	  // This function is anonymous, is executed immediately and 
+	  // the return value is assigned to QueryString!
+	  var query_string = {};
+	  var query = window.location.search.substring(1);
+	  var vars = query.split("&");
+	  for (var i=0;i<vars.length;i++) {
+	  	var pair = vars[i].split("=");
+	        // If first entry with this name
+	        if (typeof query_string[pair[0]] === "undefined") {
+	        	query_string[pair[0]] = decodeURIComponent(pair[1]);
+	        // If second entry with this name
+	      } else if (typeof query_string[pair[0]] === "string") {
+	      	var arr = [ query_string[pair[0]],decodeURIComponent(pair[1]) ];
+	      	query_string[pair[0]] = arr;
+	        // If third or later entry with this name
+	      } else {
+	      	query_string[pair[0]].push(decodeURIComponent(pair[1]));
+	      }
+	    } 
+	    return query_string;
+	  }();
+	}]);
+

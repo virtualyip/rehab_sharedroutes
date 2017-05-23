@@ -32,8 +32,8 @@
 </head>
 <body ng-app="app" ng-controller="AppController" ng-init="init()">
 	<div id="panel">
-		<div id="title">
-			行程編號: {{data.routeId}}, 共用路線: {{data.customers.length}}
+		<div id="title-bar">
+			行程編號: <span id="route-id">{{data.routeId}}</span>, 共用線: {{data.customers.length}}
 			<!-- Button trigger modal -->
 			<!-- 
 				<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#routesControlModal">
@@ -61,20 +61,25 @@
 							</div>
 						</div>
 						<div class="searchbox">
-							<div>{{stop.formatted_address}}, {{stop.name}}
+							<div>
+								<span class="address-label">
+									{{stop.formatted_address}}, {{stop.name}}
+									<img src="img/search.png" class="img-btn" ng-click="map.setCenter(stop.location)">
+								</span>
 								<span class="searchbox-menu">
-									<button class="btn btn-primary" ng-click="editStop(stop, stop_no)"> Ed </button>
+									<img src="img/edit.png" ng-click="editStop(stop, stop_no)" class="img-btn" width="25px" height="25px">
 								</span>
 							</div>
 							<div class="list-group">
 								<div ng-if="(data.customers | filter: {pick:stop_no}).length"> 上車: 
 									<span ng-repeat="customer in data.customers | filter: {pick:stop_no}"> 
-										{{customer.name}}
+										<span class="customer-label">{{customer.name}}</span>
 									</span>
 								</div>
 								<div ng-if="(data.customers | filter: {drop:stop_no}).length"> 下車: 
 									<span ng-repeat="customer in data.customers | filter: {drop:stop_no}">
-										{{customer.name}}(預算*:${{customer.totalFee.toFixed(2)}})
+										<span class="customer-label color-warning">{{customer.name}}</span>
+										<!--(預算*:${{customer.totalFee.toFixed(1)}})-->
 									</span>
 								</div>
 							</div>
@@ -84,23 +89,36 @@
 					<div ng-if="stop.isEditing">
 						<div class="searchbox-handle">
 							<div class="handle">
-								<button class="btn btn-primary" ng-click="removeStop(stop)"> X </button> {{stop_no+1}}
+								{{stop_no+1}}
 							</div>
 						</div>
 						<div class="searchbox">
-							<input type="text" autocomplete-input stop="stop" ng-model="stop._input_address">
+							<!--<button class="btn btn-primary" ng-click="removeStop(stop_no)"> X </button> -->
+							<input type="text" autocomplete-input stop="stop" ng-model="stop._input_address" style="width: 70%;">
 							<span class="searchbox-menu">
 								<button class="btn btn-primary" ng-click="editStop(stop, stop_no)"> OK </button>
 							</span>
-							<div class="list-group">
-								<div class="list-group-item" ng-repeat="customer in data.customers" ng-if="customer.pick==stop_no || customer.pick==null" ng-click="customer._pick==stop_no ? customer._pick=null : customer._pick=stop_no;" ng-class="customer._pick==stop_no ? 'active' : '';"> 
-									上車: <input type="text" ng-model="customer.name" size="10">
-									<button class="btn btn-primary" ng-click="removeCustomer(customer.$$hashKey);"> X </button>
+
+							<div class="list-group" style="width: 300px; padding: 0 0 0 30px;">
+								<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.pick==stop_no || customer.pick==null"> 
+									<span class="input-group-addon" ng-click="customer._pick==stop_no ? customer._pick=null : customer._pick=stop_no;" ng-class="customer._pick==stop_no ? 'active' : '';">
+										<input type="checkbox" aria-label="..." ng-checked="customer._pick==stop_no"> 上車: 
+									</span>
+									<input type="text" class="form-control" ng-model="customer.name" size="10">
+									<span class="input-group-addon">
+										<button class="delete-btn" ng-click="removeCustomer(customer.$$hashKey);"> X </button>
+									</span>
 								</div>
-								<div class="list-group-item" ng-repeat="customer in data.customers" ng-if="customer.drop==stop_no || (customer.pick !=null && customer.drop==null)" ng-click="customer._drop==stop_no ? customer._drop=null : customer._drop=stop_no;" ng-class="customer._drop==stop_no ? 'active' : '';">
-									下車: <input type="text" ng-model="customer.name" size="10">
+								<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.drop==stop_no || (customer.pick !=null && customer.drop==null && stop_no > customer.pick)">
+									<span class="input-group-addon" ng-click="customer._drop==stop_no ? customer._drop=null : customer._drop=stop_no;" ng-class="customer._drop==stop_no ? 'active' : '';">
+										<input type="checkbox" aria-label="..." ng-checked="customer._drop==stop_no"> 下車: 
+									</span>
+									<input type="text" class="form-control" ng-model="customer.name" size="10">
+									<span class="input-group-addon">
+										<button class="delete-btn" ng-click="removeCustomer(customer.$$hashKey);"> X </button>
+									</span>
 								</div>
-								<button class="list-group-item btn btn-primary" ng-click="addCustomer();">新增乘客</button>
+								<button class="btn btn-info" style="width: 100%; margin: 2px 0px;" ng-click="addCustomer();"> + 新增乘客</button>
 							</div>
 							<!-- {{stop}} -->
 						</div>
@@ -109,56 +127,77 @@
 				<!-- end of stop list -->
 
 				<!-- stop to be added -->
-				<div class="searchbox-container">
-					<div class="searchbox">
-						<table>
-							<tr>
-								<td>請輸入目的地</td>
-								<td><input type="text" autocomplete-input stop="data.new_stop" ng-model="data.new_stop._input_address"></td>
-								<td><button class="btn btn-primary" ng-click="addStop()"> + </button></td>
-							</tr>
-							<tr ng-if="data.new_stop._place">
-								<td>選擇上落乘客</td>
-								<td>
-									<div class="list-group">
-										<div class="list-group-item" ng-repeat="customer in data.customers | filter: {pick:null}"  ng-click="customer._pick==data.stops.length?customer._pick=null:customer._pick=data.stops.length;" ng-class="customer._pick==data.stops.length?'active':''"> 
-											上車: <input type="text" ng-model="customer.name" size="10">
-											<button class="btn btn-primary" ng-click="removeCustomer(customer.$$hashKey);"> X </button>
-										</div>
-										<div class="list-group-item" ng-repeat="customer in data.customers | filter: {pick:'!!', drop:null}" ng-click="customer._drop==data.stops.length?customer._drop=null:customer._drop=data.stops.length;" ng-class="customer._drop==data.stops.length?'active':''">
-											下車: <input type="text" ng-model="customer.name" size="10">
-										</div>
-										<button class="list-group-item btn btn-primary" ng-click="addCustomer();">新增乘客</button>
+				<div class="searchbox-container searchbox-newstop">
+					<table class="searchbox">
+						<tr>
+							<td class="searchbox-title"><span>請輸入目的地</span></td>
+							<td class="searchbox-input"><input type="text" autocomplete-input stop="data.new_stop" ng-model="data.new_stop._input_address" placeholder="選擇目的地或點擊地圖…"></td>
+							<td class="searchbox-btn"><button class="btn btn-default" ng-click="addStop()"> 確定 </button></td>
+						</tr>
+						<tr ng-if="data.new_stop._place">
+							<td class="searchbox-title">選擇上落乘客</td>
+							<td>
+								<div class="list-group">
+									<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.pick==null"> 
+										<span class="input-group-addon" ng-click="customer._pick==data.stops.length?customer._pick=null:customer._pick=data.stops.length;" ng-class="customer._pick==data.stops.length?'active':''">
+											<input type="checkbox" aria-label="..." ng-checked="customer._pick==data.stops.length"> 上車: 
+										</span>
+										<input type="text" class="form-control" ng-model="customer.name" size="10">
+										<span class="input-group-addon">
+											<button class="delete-btn" ng-click="removeCustomer(customer.$$hashKey);"> X </button>
+										</span>
 									</div>
-								</td>
-							</tr>
-						</table>
-					</div>
+									<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.pick!=null && customer.drop==null">
+										<span class="input-group-addon" ng-click="customer._drop==data.stops.length?customer._drop=null:customer._drop=data.stops.length;" ng-class="customer._drop==data.stops.length?'active':''">
+											<input type="checkbox" aria-label="..." ng-checked="customer._drop==data.stops.length"> 下車: 
+										</span>
+										<input type="text" class="form-control" ng-model="customer.name" size="10">
+										<span class="input-group-addon">
+											<button class="delete-btn" ng-click="removeCustomer(customer.$$hashKey);"> X </button>
+										</span>
+									</div>
+									<button class="btn btn-info" style="width: 100%; margin: 2px 0px;" ng-click="addCustomer();"> + 新增乘客</button>
+								</div>
+							</td>
+						</tr>
+					</table>
 				</div>
 				<!-- end of stop to be added -->
 			</div>
 
 			<div role="tabpanel" class="tab-pane" id="routes">
-				<table>
+				<table id="result">
 					<tr><th>乘客</th><th>行程</th><th>預計收費</th></tr>
 					<tr ng-repeat="customer in data.customers">
-						<td>{{customer.name}}</td>
-						<td> 
-							由 {{data.stops[customer.pick].formatted_address}}, {{data.stops[customer.pick].name}} <br> 
-							去 {{data.stops[customer.drop].formatted_address}}, {{data.stops[customer.drop].name}} <br> 
+						<td class="customer-col">{{customer.name}}</td>
+						<td class="route-col"> 
+							<span style="float: left; padding: 5px 0;">由</span> 
+							<span class="address-label" ng-if="customer.pick != null">
+								{{customer.pick+1+'. '}}
+								{{data.stops[customer.pick].formatted_address}}, {{data.stops[customer.pick].name}} 
+								<img src="img/search.png" class="img-btn" ng-click="map.setCenter(data.stops[customer.pick].location)">
+							</span>
+							<br><span style="float: left; padding: 5px 0;">去</span> 
+							<span class="address-label" ng-if="customer.drop != null">
+								{{customer.drop+1+'. '}}
+								{{data.stops[customer.drop].formatted_address}}, {{data.stops[customer.drop].name}} 
+								<img src="img/search.png" class="img-btn" ng-click="map.setCenter(data.stops[customer.drop].location)">
+							</span> 
+							<br>
 							<span ng-if="customer.totalFee">
-								預計行程 {{(customer.totalDistance/1000).toFixed(2)}}公里, 時間{{(customer.totalDuration/60).toFixed(2)}}分鐘 
+								預計行程 {{(customer.totalDistance/1000).toFixed(1)}}公里, 時間{{(customer.totalDuration/60+1).toFixed(0)}}分鐘 (交通順暢時)
 							</span>
 						</td>
-						<td>
+						<td class="fee-col">
 							<span ng-if="customer.totalFee">
-								起錶收費: ${{config.initFee.toFixed(2)}} <br>
-								路費(每公里${{config.distanceFee}}): ${{customer.distanceFee.toFixed(2)}} <br>
-								<span ng-if="customer.durationFee">付加費(如超過1小時): ${{customer.durationFee.toFixed(2)}} <br> </span>
-								電召服務費: ${{config.adminFee.toFixed(2)}} <br>
-								<span ng-if="data.customers.length > 1">共用車折扣({{config.sharedDiscount*10}}折): -${{customer.sharedDiscount.toFixed(2)}} <br> </span>
-								預計收費 ${{customer.totalFee.toFixed(2)}} <br>
-								(不包括隧道費)
+								${{config.initFee.toFixed(1)}} (1) 
+								<br>${{customer.distanceFee.toFixed(1)}} (2) 
+								<br>${{config.adminFee.toFixed(1)}} (3) 
+								<span ng-if="customer.durationFee"><br>${{customer.durationFee.toFixed(1)}} (4) </span>
+								<span ng-if="data.customers.length > 1"><br>-${{customer.sharedDiscount.toFixed(1)}} (5) </span>
+								<hr style="margin:0"/>
+								${{customer.totalFee.toFixed(1)}} (+)
+								<br>(不包隧道費)
 							</span>
 							<span ng-if="!customer.totalFee">
 								未有行程
@@ -166,6 +205,13 @@
 						</td>
 					</tr>
 				</table>
+				<div class="remark"> 注: 
+					<span> (1) 起錶收費, </span>
+					<span> (2) 路費(每公里${{config.distanceFee}}), </span>
+					<span> (3) 電召服務費, </span>
+					<span> (4) 付加費(1小時起計), </span>
+					<span> (5) 共用車折扣({{config.sharedDiscount*10}}折), </span>
+				</div>
 			</div>
 		</div>
 	</div>
