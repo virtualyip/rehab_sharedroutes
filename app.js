@@ -29,9 +29,17 @@ angular.module('app', [])
 	      scope.stop._place = place;
 
 	      //UI update
-	      window.app.map.setCenter(place.location);
-	      window.app.$apply();
-
+	      app.map.setCenter(place.geometry.location);
+	      app.map.setZoom( 17 );
+	      var marker = new google.maps.Marker({
+	      	position: place.geometry.location,
+	      	map: app.map,
+	      });
+	      if(app.markers[-1] != null){
+	      	app.markers[-1].setMap(null);
+	      }
+	      app.markers[-1] = marker;
+	      app.$apply();
 
 	      /*
 	      if(attrs.stopNo == "-1"){
@@ -90,10 +98,10 @@ angular.module('app', [])
   var	config = {
   	minRoutes: 1,
   	maxRoutes: 9,
-  	initFee: 29,
+  	initFee: 24,
   	adminFee: 5,
   	distanceFee: 1.6,
-  	durationFee: 32,
+  	durationFee: 0.4,
   	sharedDiscount: 0.6,
   };
 
@@ -116,6 +124,7 @@ angular.module('app', [])
 	app.markers = [];
 	app.data = data;
 	app.config = config;
+	app.modal = {};
 	window.app = app;
 
 	app.init = function(){
@@ -124,9 +133,17 @@ angular.module('app', [])
 	}
 
 	app.reset = function(){
-		deleteAllMarkers();
-		app.data.stops = [];
-		app.data.customers = [{name:'乘客1', pick: null, drop: null}, {name:'乘客2', pick: null, drop: null}];
+		app.modal = {
+			header: null,
+			body: "確定重新設定路程?",
+			callback: function(){
+				deleteAllMarkers();
+				app.data.stops = [];
+				app.data.customers = [{name:'乘客1', pick: null, drop: null}, {name:'乘客2', pick: null, drop: null}];
+				$('#messageModal').modal('hide');
+			},
+		}
+		$('#messageModal').modal();
 	}
 
 	function initInterface() {
@@ -139,17 +156,32 @@ angular.module('app', [])
     // Listen for clicks and add the location of the click to firebase.
     map.addListener('click', function(e) {
     	var geocoder = new google.maps.Geocoder;
-    	var place = {
+    	var geometry = {
     		location:{
     			lat: e.latLng.lat(),
     			lng: e.latLng.lng(),
     		}
     	};
-    	console.log(place);
-    	geocoder.geocode(place, function(results, status) {
+    	console.log(geometry);
+    	geocoder.geocode(geometry, function(results, status) {
     		if (status === 'OK') {
     			if (results[1]) {
     				//console.log(results);
+    				var marker = new google.maps.Marker({
+    					position: results[1].geometry.location,
+    					map: map,
+    				});
+    				if(app.markers[-1] != null){
+    					app.markers[-1].setMap(null);
+    				}
+    				app.markers[-1] = marker;
+    				app.data.stops.forEach(function(stop){
+    					if(stop.isEditing){
+    						stop._input_address = results[1].formatted_address;
+    						stop._place = results[1];
+    						return;
+    					}
+    				})
     				app.data.new_stop._input_address = results[1].formatted_address;
     				app.data.new_stop._place = results[1];
     				app.$apply();
@@ -164,6 +196,10 @@ angular.module('app', [])
 
     initAuthentication();
   }
+  app.getPlaceByLatlng = function(geometry){
+  	var deferred = $.Deferred();
+  	return deferred.promise();
+  }
 
   app.addCustomer = function(){
   	var totalCustomers = app.data.customers.length;
@@ -173,23 +209,41 @@ angular.module('app', [])
   	var newCustomer = {name:'乘客' + (totalCustomers+1), pick: null, drop: null};
   	app.data.customers.push(newCustomer);
   }
-  app.removeCustomer = function(hashKey){
-  	var totalCustomers = app.data.customers.length;
-  	if(totalCustomers <= app.config.minRoutes)
-  		return; 
+  app.removeCustomer = function(customer){
 
-  	for(i = 0; i < totalCustomers; i++){
-  		if(app.data.customers[i].$$hashKey === hashKey){
-  			app.data.customers.splice(i, 1);
-  			return;
-  		}
+  	app.modal = {
+  		header: null,
+  		body: "確定移除此 "+customer.name +" ?",
+  		callback: function(){
+  			var totalCustomers = app.data.customers.length;
+  			if(totalCustomers <= app.config.minRoutes)
+  				return; 
+
+  			for(i = 0; i < totalCustomers; i++){
+  				if(app.data.customers[i].$$hashKey === customer.$$hashKey){
+  					app.data.customers.splice(i, 1);
+  					$('#messageModal').modal('hide');
+  					return;
+  				}
+  			}
+  		},
   	}
+  	$('#messageModal').modal();
+
   }
 
   app.addStop = function() {
   	console.log('addStop', app.data.new_stop);
   	var place = app.data.new_stop._place;
-  	if(!place) return console.log("invalid address");
+  	if(!place){
+  		app.modal = {
+  			header: null,
+  			body: "地址無效, 請重新輸入",
+  			callback: null,
+  		}
+  		$('#messageModal').modal();
+  		return console.log("invalid address");
+  	} 
 
   	var hasCustomer = false;
   	app.data.customers.forEach(function(customer){
@@ -204,7 +258,15 @@ angular.module('app', [])
   			hasCustomer = true;
   		}
   	});
-  	if(!hasCustomer) return console.log("Assign at least one customer");
+  	if(!hasCustomer){
+  		app.modal = {
+  			header: null,
+  			body: "選擇最少一位上落車乘客",
+  			callback: null,
+  		}
+  		$('#messageModal').modal();
+  		return console.log("Assign at least one customer");
+  	} 
 
   	var stop = {
   		stop_no : data.stops.length + 1,
@@ -434,6 +496,10 @@ angular.module('app', [])
   			app.markers[stop_no].setPosition(stop.location);
   		}
   	});
+  	//temp marker for store new address
+  	if(app.markers[-1] != null){
+  		app.markers[-1].setMap(null);
+  	}
   }
 
   app.computeTotalDistance = function(result) {

@@ -29,7 +29,6 @@ body {
 	height: 100%;
 }
 #panel {
-	min-width: 400px;
 	width: 400px;
 	float: left;
 	height: 100%;
@@ -110,10 +109,6 @@ body {
 	max-width: 90%;
 	margin: 0 0 5px 0;
 }
-.address-label img {
-	width: 20px;
-	height: 20px;
-}
 .customer-label {
 	background: #5cb85c;
 	padding: 5px 10px;
@@ -175,4 +170,22 @@ html, body {
 }
 .nav {
 	background: #fff;
+}
+.modal {
+	text-align: center;
+}
+
+@media screen and (min-width: 768px) { 
+	.modal:before {
+		display: inline-block;
+		vertical-align: middle;
+		content: " ";
+		height: 100%;
+	}
+}
+
+.modal-dialog {
+	display: inline-block;
+	text-align: left;
+	vertical-align: middle;
 }

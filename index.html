@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="keywords" content="Rehabus, HKSR">
+	<meta name="description" content="The hong kong society for rehab shared route fee calculator">
+
 	<script src="https://code.jquery.com/jquery-2.1.4.js"></script>
 	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
 
@@ -35,9 +40,11 @@
 	<div id="panel">
 		<div id="title-bar">
 			<form action="/" method="get">
-				行程編號: <input type="text" size="20" value="{{data.routeId}}" name="routeId">
-				<input type="submit" class="btn-default" value="查詢">
-				<input type="button" class="btn-danger" value="重設行程" ng-click="reset()">
+				<div class="input-group">
+					<span class="input-group-addon">行程編號</span>
+					<input type="text" size="35" value="{{data.routeId}}" name="routeId" class="form-control" placeholder="行程編號">
+					<span class="input-group-addon"><input type="submit" class="btn-default" value="查詢"></span>
+				</div>
 			</form>
 			<!-- Button trigger modal -->
 			<!-- 
@@ -52,208 +59,207 @@
 			<li role="presentation" class="active"><a href="#searchboxes" aria-controls="searchboxes" role="tab" data-toggle="tab">設定行程</a></li>
 			<li role="presentation"><a href="#routes" aria-controls="routes" role="tab" data-toggle="tab">收費詳情</a></li>
 			<li id="map-tab" role="presentation"><a href="#map-tab-content" aria-controls="map-tab-content" role="tab" data-toggle="tab">地圖</a></li>
-		</ul>
+			<li id="map-tab" role="presentation">
+				<input type="button" class="btn-danger" value="重設行程" ng-click="reset()" style="margin:10px"></li>
+			</ul>
 
-		<!-- Tab panes -->
-		<div class="tab-content">
-			<div role="tabpanel" class="tab-pane active" id="searchboxes" style="padding-bottom: 200px;">
-				<!-- stop list -->
-				<div class="searchbox-container" ng-repeat="(stop_no, stop) in data.stops">
-					<!-- stop info -->
-					<div ng-if="!stop.isEditing">
-						<div class="searchbox-handle">
-							<div class="handle">
-								{{stop_no+1}}
-							</div>
-						</div>
-						<div class="searchbox">
-							<div>
-								<span class="address-label">
-									{{stop.formatted_address}}, {{stop.name}}
-									<img src="img/search.png" class="img-btn" ng-click="map.setCenter(stop.location)">
-								</span>
-								<span class="searchbox-menu">
-									<img src="img/edit.png" ng-click="editStop(stop, stop_no)" class="img-btn" width="25px" height="25px">
-								</span>
-							</div>
-							<div class="list-group">
-								<div ng-if="(data.customers | filter: {pick:stop_no}).length"> 上車: 
-									<span ng-repeat="customer in data.customers | filter: {pick:stop_no}"> 
-										<span class="customer-label">{{customer.name}}</span>
-									</span>
-								</div>
-								<div ng-if="(data.customers | filter: {drop:stop_no}).length"> 下車: 
-									<span ng-repeat="customer in data.customers | filter: {drop:stop_no}">
-										<span class="customer-label color-warning">{{customer.name}}</span>
-										<!--(預算*:${{customer.totalFee.toFixed(1)}})-->
-									</span>
+			<!-- Tab panes -->
+			<div class="tab-content">
+				<div role="tabpanel" class="tab-pane active" id="searchboxes" style="padding-bottom: 200px;height: 1200px;">
+					<!-- stop list -->
+					<div class="searchbox-container" ng-repeat="(stop_no, stop) in data.stops">
+						<!-- stop info -->
+						<div ng-if="!stop.isEditing">
+							<div class="searchbox-handle">
+								<div class="handle">
+									{{stop_no+1}}
 								</div>
 							</div>
-						</div>
-					</div>
-					<!-- stop info edit -->
-					<div ng-if="stop.isEditing">
-						<div class="searchbox-handle">
-							<div class="handle">
-								{{stop_no+1}}
-							</div>
-						</div>
-						<div class="searchbox">
-							<!--<button class="btn btn-primary" ng-click="removeStop(stop_no)"> X </button> -->
-							<input type="text" autocomplete-input stop="stop" ng-model="stop._input_address" style="width: 70%;">
-							<span class="searchbox-menu">
-								<button class="btn btn-primary" ng-click="editStop(stop, stop_no)"> OK </button>
-							</span>
-
-							<div class="list-group" style="width: 300px; padding: 0 0 0 30px;">
-								<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.pick==stop_no || customer.pick==null"> 
-									<span class="input-group-addon" ng-click="customer._pick==stop_no ? customer._pick=null : customer._pick=stop_no;" ng-class="customer._pick==stop_no ? 'active' : '';">
-										<input type="checkbox" aria-label="..." ng-checked="customer._pick==stop_no"> 上車: 
+							<div class="searchbox">
+								<div>
+									<span class="address-label">
+										{{stop.formatted_address}}, {{stop.name}}
+										<span class="glyphicon glyphicon-search img-btn" ng-click="map.setCenter(stop.location)"></span>
 									</span>
-									<input type="text" class="form-control" ng-model="customer.name" size="10">
-									<span class="input-group-addon">
-										<button class="delete-btn" ng-click="removeCustomer(customer.$$hashKey);"> X </button>
+									<span class="searchbox-menu">
+										<span class="glyphicon glyphicon-pencil img-btn" ng-click="editStop(stop, stop_no)"></span>
 									</span>
 								</div>
-								<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.drop==stop_no || (customer.pick !=null && customer.drop==null && stop_no > customer.pick)">
-									<span class="input-group-addon" ng-click="customer._drop==stop_no ? customer._drop=null : customer._drop=stop_no;" ng-class="customer._drop==stop_no ? 'active' : '';">
-										<input type="checkbox" aria-label="..." ng-checked="customer._drop==stop_no"> 下車: 
-									</span>
-									<input type="text" class="form-control" ng-model="customer.name" size="10">
-									<span class="input-group-addon">
-										<button class="delete-btn" ng-click="removeCustomer(customer.$$hashKey);"> X </button>
-									</span>
-								</div>
-								<button class="btn btn-info" style="width: 100%; margin: 2px 0px;" ng-click="addCustomer();"> + 新增乘客</button>
-							</div>
-							<!-- {{stop}} -->
-						</div>
-					</div>
-				</div>
-				<!-- end of stop list -->
-
-				<!-- stop to be added -->
-				<div class="searchbox-container searchbox-newstop">
-					<table class="searchbox">
-						<tr>
-							<td class="searchbox-title"><span>請輸入目的地</span></td>
-							<td class="searchbox-input"><input type="text" autocomplete-input stop="data.new_stop" ng-model="data.new_stop._input_address" placeholder="選擇目的地或點擊地圖…"></td>
-							<td class="searchbox-btn"><button class="btn btn-default" ng-click="addStop()"> 確定 </button></td>
-						</tr>
-						<tr ng-if="data.new_stop._place">
-							<td class="searchbox-title">選擇上落乘客</td>
-							<td>
 								<div class="list-group">
-									<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.pick==null"> 
-										<span class="input-group-addon" ng-click="customer._pick==data.stops.length?customer._pick=null:customer._pick=data.stops.length;" ng-class="customer._pick==data.stops.length?'active':''">
-											<input type="checkbox" aria-label="..." ng-checked="customer._pick==data.stops.length"> 上車: 
-										</span>
-										<input type="text" class="form-control" ng-model="customer.name" size="10">
-										<span class="input-group-addon">
-											<button class="delete-btn" ng-click="removeCustomer(customer.$$hashKey);"> X </button>
+									<div ng-if="(data.customers | filter: {pick:stop_no}).length"> <span class="glyphicon glyphicon-export"></span> 上車: 
+										<span ng-repeat="customer in data.customers | filter: {pick:stop_no}"> 
+											<span class="customer-label">{{customer.name}}</span>
 										</span>
 									</div>
-									<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.pick!=null && customer.drop==null">
-										<span class="input-group-addon" ng-click="customer._drop==data.stops.length?customer._drop=null:customer._drop=data.stops.length;" ng-class="customer._drop==data.stops.length?'active':''">
-											<input type="checkbox" aria-label="..." ng-checked="customer._drop==data.stops.length"> 下車: 
+									<div ng-if="(data.customers | filter: {drop:stop_no}).length"> <span class="glyphicon glyphicon-import"></span>  下車: 
+										<span ng-repeat="customer in data.customers | filter: {drop:stop_no}">
+											<span class="customer-label color-warning">{{customer.name}}</span>
+											<!--(預算*:${{customer.totalFee.toFixed(1)}})-->
+										</span>
+									</div>
+								</div>
+							</div>
+						</div>
+						<!-- stop info edit -->
+						<div ng-if="stop.isEditing">
+							<div class="searchbox-handle">
+								<div class="handle">
+									{{stop_no+1}}
+								</div>
+							</div>
+							<div class="searchbox">
+								<!--<button class="btn btn-primary" ng-click="removeStop(stop_no)"> X </button> -->
+								<input type="text" autocomplete-input stop="stop" ng-model="stop._input_address" style="width: 70%;">
+								<span class="searchbox-menu">
+									<button class="btn btn-primary" ng-click="editStop(stop, stop_no)"> OK </button>
+								</span>
+
+								<div class="list-group" style="width: 300px; padding: 0 0 0 30px;">
+									<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.pick==stop_no || customer.pick==null"> 
+										<span class="input-group-addon" ng-click="customer._pick==stop_no ? customer._pick=null : customer._pick=stop_no;" ng-class="customer._pick==stop_no ? 'active' : '';">
+											<input type="checkbox" aria-label="..." ng-checked="customer._pick==stop_no"> <span class="glyphicon glyphicon-export"></span> 上車: 
 										</span>
 										<input type="text" class="form-control" ng-model="customer.name" size="10">
 										<span class="input-group-addon">
-											<button class="delete-btn" ng-click="removeCustomer(customer.$$hashKey);"> X </button>
+											<button class="delete-btn" ng-click="removeCustomer(customer);"> <span class="glyphicon glyphicon-trash"></span> </button>
+										</span>
+									</div>
+									<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.drop==stop_no || (customer.pick !=null && customer.drop==null && stop_no > customer.pick)">
+										<span class="input-group-addon" ng-click="customer._drop==stop_no ? customer._drop=null : customer._drop=stop_no;" ng-class="customer._drop==stop_no ? 'active' : '';">
+											<input type="checkbox" aria-label="..." ng-checked="customer._drop==stop_no"> <span class="glyphicon glyphicon-import"></span> 下車: 
+										</span>
+										<input type="text" class="form-control" ng-model="customer.name" size="10">
+										<span class="input-group-addon">
+											<button class="delete-btn" ng-click="removeCustomer(customer);"> <span class="glyphicon glyphicon-trash"></span> </button>
 										</span>
 									</div>
 									<button class="btn btn-info" style="width: 100%; margin: 2px 0px;" ng-click="addCustomer();"> + 新增乘客</button>
 								</div>
+								<!-- {{stop}} -->
+							</div>
+						</div>
+					</div>
+					<!-- end of stop list -->
+
+					<!-- stop to be added -->
+					<div class="searchbox-container searchbox-newstop">
+						<table class="searchbox">
+							<tr>
+								<td class="searchbox-title"><span>請輸入目的地</span></td>
+								<td class="searchbox-input"><input type="text" autocomplete-input stop="data.new_stop" ng-model="data.new_stop._input_address" placeholder="選擇目的地或點擊地圖…"></td>
+								<td class="searchbox-btn"><button class="btn btn-default" ng-click="addStop()"> 確定 </button></td>
+							</tr>
+							<tr ng-if="data.new_stop._place">
+								<td class="searchbox-title">選擇上落乘客</td>
+								<td colspan="2">
+									<div class="list-group">
+										<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.pick==null"> 
+											<span class="input-group-addon" ng-click="customer._pick==data.stops.length?customer._pick=null:customer._pick=data.stops.length;" ng-class="customer._pick==data.stops.length?'active':''">
+												<input type="checkbox" aria-label="..." ng-checked="customer._pick==data.stops.length">  <span class="glyphicon glyphicon-export"></span> 上車: 
+											</span>
+											<input type="text" class="form-control" ng-model="customer.name" size="10">
+											<span class="input-group-addon">
+												<button class="delete-btn" ng-click="removeCustomer(customer);"> <span class="glyphicon glyphicon-trash"></span> </button>
+											</span>
+										</div>
+										<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.pick!=null && customer.drop==null">
+											<span class="input-group-addon" ng-click="customer._drop==data.stops.length?customer._drop=null:customer._drop=data.stops.length;" ng-class="customer._drop==data.stops.length?'active':''">
+												<input type="checkbox" aria-label="..." ng-checked="customer._drop==data.stops.length">  <span class="glyphicon glyphicon-import"></span> 下車: 
+											</span>
+											<input type="text" class="form-control" ng-model="customer.name" size="10">
+											<span class="input-group-addon">
+												<button class="delete-btn" ng-click="removeCustomer(customer);"> <span class="glyphicon glyphicon-trash"></span> </button>
+											</span>
+										</div>
+										<button class="btn btn-info" style="width: 100%; margin: 2px 0px;" ng-click="addCustomer();"> + 新增乘客</button>
+									</div>
+								</td>
+							</tr>
+						</table>
+					</div>
+					<!-- end of stop to be added -->
+				</div>
+
+				<div role="tabpanel" class="tab-pane" id="routes" style="padding: 20px;height: 1200px;">
+					<table id="result">
+						<tr>
+							<th><span class="glyphicon glyphicon-user"></span> 乘客</th>
+							<th><span class="glyphicon glyphicon-road"></span> 行程</th>
+							<th><span class="glyphicon glyphicon-tag"></span> 預計收費</th>
+						</tr>
+						<tr ng-repeat="customer in data.customers">
+							<td class="customer-col">{{customer.name}}</td>
+							<td class="route-col"> 
+								<span style="float: left; padding: 5px 0;">由</span> 
+								<span class="address-label" ng-if="customer.pick != null">
+									{{customer.pick+1+'. '}}
+									{{data.stops[customer.pick].formatted_address}}, {{data.stops[customer.pick].name}} 
+									<span class="glyphicon glyphicon-search img-btn" ng-click="map.setCenter(data.stops[customer.pick].location)"></span>
+								</span>
+								<br><span style="float: left; padding: 5px 0;">去</span> 
+								<span class="address-label" ng-if="customer.drop != null">
+									{{customer.drop+1+'. '}}
+									{{data.stops[customer.drop].formatted_address}}, {{data.stops[customer.drop].name}} 
+									<span class="glyphicon glyphicon-search img-btn" ng-click="map.setCenter(data.stops[customer.drop].location)"></span>
+								</span> 
+								<br>
+								<span ng-if="customer.totalFee">
+									預計行程 {{(customer.totalDistance/1000).toFixed(1)}}公里, 時間{{(customer.totalDuration/60+1).toFixed(0)}}分鐘 (交通順暢時)
+								</span>
+							</td>
+							<td class="fee-col">
+								<span ng-if="customer.totalFee">
+									${{config.initFee.toFixed(1)}} (1) 
+									<br>${{customer.distanceFee.toFixed(1)}} (2) 
+									<br>${{config.adminFee.toFixed(1)}} (3) 
+									<span ng-if="customer.durationFee"><br>${{customer.durationFee.toFixed(1)}} (4) </span>
+									<span ng-if="data.customers.length > 1"><br>-${{customer.sharedDiscount.toFixed(1)}} (5) </span>
+									<hr style="margin:0"/>
+									${{customer.totalFee.toFixed(1)}} (+)
+									<br>(不包隧道費)
+								</span>
+								<span ng-if="!customer.totalFee">
+									未有行程
+								</span>
 							</td>
 						</tr>
 					</table>
+					<div class="remark"> 注: 
+						<span> (1)=起錶收費, </span>
+						<span> (2)=路費(每公里${{config.distanceFee}}), </span>
+						<span> (3)=電召服務費, </span>
+						<span> (4)=付加費(1小時起計), </span>
+						<span> (5)=共用車折扣({{config.sharedDiscount*10}}折), </span>
+					</div>
 				</div>
-				<!-- end of stop to be added -->
-			</div>
 
-			<div role="tabpanel" class="tab-pane" id="routes" style="padding: 20px;">
-				<table id="result">
-					<tr><th>乘客</th><th>行程</th><th>預計收費</th></tr>
-					<tr ng-repeat="customer in data.customers">
-						<td class="customer-col">{{customer.name}}</td>
-						<td class="route-col"> 
-							<span style="float: left; padding: 5px 0;">由</span> 
-							<span class="address-label" ng-if="customer.pick != null">
-								{{customer.pick+1+'. '}}
-								{{data.stops[customer.pick].formatted_address}}, {{data.stops[customer.pick].name}} 
-								<img src="img/search.png" class="img-btn" ng-click="map.setCenter(data.stops[customer.pick].location)">
-							</span>
-							<br><span style="float: left; padding: 5px 0;">去</span> 
-							<span class="address-label" ng-if="customer.drop != null">
-								{{customer.drop+1+'. '}}
-								{{data.stops[customer.drop].formatted_address}}, {{data.stops[customer.drop].name}} 
-								<img src="img/search.png" class="img-btn" ng-click="map.setCenter(data.stops[customer.drop].location)">
-							</span> 
-							<br>
-							<span ng-if="customer.totalFee">
-								預計行程 {{(customer.totalDistance/1000).toFixed(1)}}公里, 時間{{(customer.totalDuration/60+1).toFixed(0)}}分鐘 (交通順暢時)
-							</span>
-						</td>
-						<td class="fee-col">
-							<span ng-if="customer.totalFee">
-								${{config.initFee.toFixed(1)}} (1) 
-								<br>${{customer.distanceFee.toFixed(1)}} (2) 
-								<br>${{config.adminFee.toFixed(1)}} (3) 
-								<span ng-if="customer.durationFee"><br>${{customer.durationFee.toFixed(1)}} (4) </span>
-								<span ng-if="data.customers.length > 1"><br>-${{customer.sharedDiscount.toFixed(1)}} (5) </span>
-								<hr style="margin:0"/>
-								${{customer.totalFee.toFixed(1)}} (+)
-								<br>(不包隧道費)
-							</span>
-							<span ng-if="!customer.totalFee">
-								未有行程
-							</span>
-						</td>
-					</tr>
-				</table>
-				<div class="remark"> 注: 
-					<span> (1)=起錶收費, </span>
-					<span> (2)=路費(每公里${{config.distanceFee}}), </span>
-					<span> (3)=電召服務費, </span>
-					<span> (4)=付加費(1小時起計), </span>
-					<span> (5)=共用車折扣({{config.sharedDiscount*10}}折), </span>
+				<div role="tabpanel" class="tab-pane" id="map-tab-content">
 				</div>
 			</div>
 
-			<div role="tabpanel" class="tab-pane" id="map-tab-content">
-			</div>
 		</div>
-	</div>
 
-	<!-- Modal -->
-	<!-- 
-	<div class="modal fade" id="routesControlModal" tabindex="-1" role="dialog">
-		<div class="modal-dialog" role="document">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h4 class="modal-title">共用路線數及乘客</h4>
-				</div>
-				<div class="modal-body">
-					<div>
-						共用路線數: <input type="text" ng-model="data.routes" ng-change="routesChanged()">
-						<button type="button" class="btn btn-primary" ng-click="data.routes=data.routes-1; routesChanged();"> - </button>
-						<button type="button" class="btn btn-primary" ng-click="data.routes=data.routes+1; routesChanged();"> + </button>
-						(1-9)
+		<!-- Google Map -->
+		<div id="map"></div>
+		<!-- Google Map -->
+
+		<!-- Modal -->
+		<div class="modal fade" id="messageModal" tabindex="-1" role="dialog" aria-labelledby="modalLabel">
+			<div class="modal-dialog modal-sm" role="document">
+				<div class="modal-content">
+					<div class="modal-header" ng-if="modal.header">
+						{{modal.header}}
 					</div>
-					<div class="list-group">
-						<input type="text" class="list-group-item" ng-repeat="customer in data.customers" ng-model="customer.name">
+					<div class="modal-body">
+						{{modal.body}}
 					</div>
-				</div>
-				<div class="modal-footer">
-					<button type="button" class="btn btn-primary" data-dismiss="modal">確定</button>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-default" data-dismiss="modal">返回</button>
+						<button type="button" class="btn btn-primary" ng-click="modal.callback()" ng-if="modal.callback != null">確定</button>
+					</div>
 				</div>
 			</div>
 		</div>
-	</div>
--->
-<!-- Google Map -->
-<div id="map"></div>
-<!-- Google Map -->
 
-</body>
-</html>
+	</body>
+	</html>

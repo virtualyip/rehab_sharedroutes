@@ -1,28 +1,43 @@
 $(document).ready(function(){
 	var isWide = true;
-	if($(window).width() <= 768){
+	if($(window).width() <= 600 || isMobile()){
 		isWide = false;
 	}
-	setScreen();
 
-	$(window).resize(function(){
-		if ($(window).width() <= 768){	
-			if(isWide){
-				isWide = false;
-				setScreen();
-			}
-		}else{
-			if(!isWide){
-				isWide = true;
-				setScreen();
-			}
-		}
-	});
+	function isMobile(){
+		if( navigator.userAgent.match(/Android/i)
+			|| navigator.userAgent.match(/webOS/i)
+			|| navigator.userAgent.match(/iPhone/i)
+			|| navigator.userAgent.match(/iPad/i)
+			|| navigator.userAgent.match(/iPod/i)
+			|| navigator.userAgent.match(/BlackBerry/i)
+			|| navigator.userAgent.match(/Windows Phone/i)
+			){
+			return true;
+	}else{
+		return false;
+	}
+}
+setScreen();
 
-	function setScreen(){
-		var panel = document.getElementById('panel');
-		var mapTab = document.getElementById('map-tab');
+$(window).resize(function(){
+	if ($(window).width() <= 600 || isMobile()){	
 		if(isWide){
+			isWide = false;
+			setScreen();
+		}
+	}else{
+		if(!isWide){
+			isWide = true;
+			setScreen();
+		}
+	}
+});
+
+function setScreen(){
+	var panel = document.getElementById('panel');
+	var mapTab = document.getElementById('map-tab');
+	if(isWide){
 			//panel.style.float = "left";
 			panel.style.width = "400px";
 			panel.style.position = "relative";

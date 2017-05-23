@@ -12,6 +12,18 @@
 				"key": "Cache-Control",
 				"value": "max-age=5"
 			}]
+		},{
+			"source": "response.js",
+			"headers": [{
+				"key": "Cache-Control",
+				"value": "max-age=5"
+			}]
+		},{
+			"source": "app.css",
+			"headers": [{
+				"key": "Cache-Control",
+				"value": "max-age=5"
+			}]
 		}]
 	}
 }

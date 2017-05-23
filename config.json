@@ -1,0 +1,9 @@
+{
+	minRoutes: 1,
+	maxRoutes: 9,
+	initFee: 29,
+	adminFee: 5,
+	distanceFee: 1.6,
+	durationFee: 1.6,
+	sharedDiscount: 0.6,
+};
