@@ -22,21 +22,22 @@ body {
 /* Always set the map height explicitly to define the size of the div
 * element that contains the map. */
 #title-bar {
-	margin: 20px;
+	padding: 20px;
+	background: #fff;
 }
 #map {
 	height: 100%;
 }
 #panel {
+	min-width: 400px;
 	width: 400px;
 	float: left;
 	height: 100%;
-	background: rgba(255,255,255,0.9);
+	background: transparent;
 	z-index: 1;
-	overflow: scroll;
+	overflow: auto;
 }
 .searchbox-newstop {
-	margin-bottom: 200px;
 	background: #3367D6;
 	color: #fff;
 }
@@ -124,7 +125,6 @@ body {
 	color: #fff;
 }
 #result {
-	margin: 20px;
 }
 #result .customer-col {
 	width: 15%;
@@ -169,4 +169,10 @@ html, body {
 }
 .img-btn {
 	cursor: pointer;
+}
+.tab-content {
+	background: #fff;
+}
+.nav {
+	background: #fff;
 }

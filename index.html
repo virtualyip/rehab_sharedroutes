@@ -27,13 +27,18 @@
 	  firebase.initializeApp(config);
 	</script>
 
-	<script src="app.js"></script>
+	<script src="app.js?version=1"></script>
+	<script src="responsive.js?version=1"></script>
 	<link rel="stylesheet" href="app.css">
 </head>
 <body ng-app="app" ng-controller="AppController" ng-init="init()">
 	<div id="panel">
 		<div id="title-bar">
-			行程編號: <span id="route-id">{{data.routeId}}</span>, 共用線: {{data.customers.length}}
+			<form action="/" method="get">
+				行程編號: <input type="text" size="20" value="{{data.routeId}}" name="routeId">
+				<input type="submit" class="btn-default" value="查詢">
+				<input type="button" class="btn-danger" value="重設行程" ng-click="reset()">
+			</form>
 			<!-- Button trigger modal -->
 			<!-- 
 				<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#routesControlModal">
@@ -46,11 +51,12 @@
 		<ul class="nav nav-tabs" role="tablist">
 			<li role="presentation" class="active"><a href="#searchboxes" aria-controls="searchboxes" role="tab" data-toggle="tab">設定行程</a></li>
 			<li role="presentation"><a href="#routes" aria-controls="routes" role="tab" data-toggle="tab">收費詳情</a></li>
+			<li id="map-tab" role="presentation"><a href="#map-tab-content" aria-controls="map-tab-content" role="tab" data-toggle="tab">地圖</a></li>
 		</ul>
 
 		<!-- Tab panes -->
 		<div class="tab-content">
-			<div role="tabpanel" class="tab-pane active" id="searchboxes">
+			<div role="tabpanel" class="tab-pane active" id="searchboxes" style="padding-bottom: 200px;">
 				<!-- stop list -->
 				<div class="searchbox-container" ng-repeat="(stop_no, stop) in data.stops">
 					<!-- stop info -->
@@ -165,7 +171,7 @@
 				<!-- end of stop to be added -->
 			</div>
 
-			<div role="tabpanel" class="tab-pane" id="routes">
+			<div role="tabpanel" class="tab-pane" id="routes" style="padding: 20px;">
 				<table id="result">
 					<tr><th>乘客</th><th>行程</th><th>預計收費</th></tr>
 					<tr ng-repeat="customer in data.customers">
@@ -206,19 +212,18 @@
 					</tr>
 				</table>
 				<div class="remark"> 注: 
-					<span> (1) 起錶收費, </span>
-					<span> (2) 路費(每公里${{config.distanceFee}}), </span>
-					<span> (3) 電召服務費, </span>
-					<span> (4) 付加費(1小時起計), </span>
-					<span> (5) 共用車折扣({{config.sharedDiscount*10}}折), </span>
+					<span> (1)=起錶收費, </span>
+					<span> (2)=路費(每公里${{config.distanceFee}}), </span>
+					<span> (3)=電召服務費, </span>
+					<span> (4)=付加費(1小時起計), </span>
+					<span> (5)=共用車折扣({{config.sharedDiscount*10}}折), </span>
 				</div>
+			</div>
+
+			<div role="tabpanel" class="tab-pane" id="map-tab-content">
 			</div>
 		</div>
 	</div>
-
-	<!-- Google Map -->
-	<div id="map"></div>
-	<!-- Google Map -->
 
 	<!-- Modal -->
 	<!-- 
@@ -246,5 +251,9 @@
 		</div>
 	</div>
 -->
+<!-- Google Map -->
+<div id="map"></div>
+<!-- Google Map -->
+
 </body>
 </html>

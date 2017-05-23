@@ -27,7 +27,12 @@ angular.module('app', [])
 
 	      console.log("details for input", place);
 	      scope.stop._place = place;
+
+	      //UI update
+	      window.app.map.setCenter(place.location);
 	      window.app.$apply();
+
+
 	      /*
 	      if(attrs.stopNo == "-1"){
 	      	app.addStop(place)
@@ -52,8 +57,12 @@ angular.module('app', [])
   		featureType: 'poi',
       stylers: [{ visibility: 'off' }]  // Turn off POI.
     }],
-    disableDoubleClickZoom: true,
+    disableDoubleClickZoom: false,
     streetViewControl: false,
+    mapTypeControl: true,
+    mapTypeControlOptions: {
+    	position: google.maps.ControlPosition.TOP_RIGHT
+    },
   });
 
 
@@ -70,7 +79,9 @@ angular.module('app', [])
   function deleteAllMarkers() {
   	app.markers.forEach(function(marker){
   		marker.setMap(null);
+  		marker = null;
   	}); 
+  	app.markers = [];
   }
 
   /**
@@ -112,52 +123,46 @@ angular.module('app', [])
 		google.maps.event.addDomListener(window, 'load', initInterface);
 	}
 
-	function makeInfoBox(controlDiv, map) {
-    // Set CSS for the control border.
-    var controlUI = document.createElement('div');
-    controlUI.style.boxShadow = 'rgba(0, 0, 0, 0.298039) 0px 1px 4px -1px';
-    controlUI.style.backgroundColor = '#fff';
-    controlUI.style.border = '2px solid #fff';
-    controlUI.style.borderRadius = '2px';
-    controlUI.style.marginBottom = '22px';
-    controlUI.style.marginTop = '10px';
-    controlUI.style.textAlign = 'center';
-    controlDiv.appendChild(controlUI);
+	app.reset = function(){
+		deleteAllMarkers();
+		app.data.stops = [];
+		app.data.customers = [{name:'乘客1', pick: null, drop: null}, {name:'乘客2', pick: null, drop: null}];
+	}
 
-    // Set CSS for the control interior.
-    var controlText = document.createElement('div');
-    controlText.style.color = 'rgb(25,25,25)';
-    controlText.style.fontFamily = 'Roboto,Arial,sans-serif';
-    controlText.style.fontSize = '100%';
-    controlText.style.padding = '6px';
-    controlText.textContent = 'The map shows all clicks made in the last 10 minutes.';
-    controlUI.appendChild(controlText);
-  }
-
-  function initInterface() {
-  	console.log('initInterface');
+	function initInterface() {
+		console.log('initInterface');
     // Create the DIV to hold the control and call the makeInfoBox() constructor
     // passing in this DIV.
-    var infoBoxDiv = document.createElement('div');
-    makeInfoBox(infoBoxDiv, map);
-    map.controls[google.maps.ControlPosition.TOP_RIGHT].push(infoBoxDiv);
+    //var panel = document.getElementById('panel');
+    //map.controls[google.maps.ControlPosition.TOP_LEFT].push(panel);
 
     // Listen for clicks and add the location of the click to firebase.
     map.addListener('click', function(e) {
-    	data.lat = e.latLng.lat();
-    	data.lng = e.latLng.lng();
-    	//addToFirebase(data);
+    	var geocoder = new google.maps.Geocoder;
+    	var place = {
+    		location:{
+    			lat: e.latLng.lat(),
+    			lng: e.latLng.lng(),
+    		}
+    	};
+    	console.log(place);
+    	geocoder.geocode(place, function(results, status) {
+    		if (status === 'OK') {
+    			if (results[1]) {
+    				//console.log(results);
+    				app.data.new_stop._input_address = results[1].formatted_address;
+    				app.data.new_stop._place = results[1];
+    				app.$apply();
+    			} else {
+    				console.log('No results found');
+    			}
+    		} else {
+    			console.log('Geocoder failed due to: ' + status);
+    		}
+    	});
     });
 
-    // Create a heatmap.
-    var heatmap = new google.maps.visualization.HeatmapLayer({
-    	data: [],
-    	map: map,
-    	radius: 16
-    });
-
-    initAuthentication(initFirebase.bind(undefined, heatmap));
-
+    initAuthentication();
   }
 
   app.addCustomer = function(){
@@ -232,7 +237,7 @@ angular.module('app', [])
 		delete app.data.new_stop._place;
 
 		//UI markInfoMarkerOnMap
-		app.markInfoMarkerOnMap(stop, app.data.stops.length);
+		app.markInfoMarkerOnMap(stop, app.data.stops.length-1);
 
 		//store data
 		dataStore();
@@ -242,6 +247,7 @@ angular.module('app', [])
 		stop.place_id = place.place_id;
 		//stop.name = place.name;
 		stop.formatted_address = place.formatted_address;
+		if(!stop.location) stop.location = {};
 		stop.location.lat = place.geometry.location.lat();
 		stop.location.lng = place.geometry.location.lng();
 	}
@@ -271,12 +277,21 @@ angular.module('app', [])
 		console.log('editStop', stop);
 		if(stop.isEditing){
 			stop.isEditing = false;
+			var hasUpdate = false;
 			app.data.customers.forEach(function(customer){
+				if(customer.pick != customer._pick || customer.drop != customer._drop){
+					hasUpdate = true;
+				}
 				customer.pick = customer._pick;
 				customer.drop = customer._drop;
 				delete customer._pick;
 				delete customer._drop;
 			});
+			if(hasUpdate){
+				app.updateRouteFee();
+				//store data
+				dataStore();
+			}
 			if(stop._place != null){
 				app.updateStop(stop, stop._place);
 				stop.input_address = stop._input_address;
@@ -620,36 +635,39 @@ angular.module('app', [])
 		    app.data.isAnonymous = user.isAnonymous;
 		    app.data.routeId = user.uid;
 
-		    onAuthSuccess();
+		    //onAuthSuccess();
 		    app.$apply();
 
 		    //console.log(window.localStorage.getItem(app.data.routeId));
 		    if(QueryString.routeId != null){
-		    	var ref = firebase.database().ref('routes/'+QueryString.routeId);
+		    	var ref = firebase.database().ref(QueryString.routeId+'/');
 		    	ref.once('value', function(snap) {
 	          console.log('firebase data', snap.val());  // Add click with same timestamp.
-	          app.data = angular.fromJson(snap.val());
-	          app.getDirections();
-	          app.$apply();
+	          if(snap.val() != null){
+	          	app.data = angular.fromJson(snap.val());
+	          	app.getDirections();
+	          	app.$apply();
+	          }else{
+	          	loadLocalData();
+	          }
 	        }, function(err) {
 	        	console.warn(err);
+	        	loadLocalData();
 	        });
 		    }else{
-		    	var ref = firebase.database().ref('routes/'+app.data.routeId);
+		    	var ref = firebase.database().ref(app.data.routeId+'/');
 		    	ref.once('value', function(snap) {
 	          console.log('own firebase data', snap.val());  // Add click with same timestamp.
-	          app.data = angular.fromJson(snap.val());
-	          app.getDirections();
-	          app.$apply();
+	          if(snap.val() != null){
+	          	app.data = angular.fromJson(snap.val());
+	          	app.getDirections();
+	          	app.$apply();
+	          }else{
+	          	loadLocalData();
+	          }
 	        }, function(err) {
 	        	console.warn(err);
-	        	if(window.localStorage.getItem(app.data.routeId) != null){
-	        		app.data = angular.fromJson(window.localStorage.getItem(app.data.routeId));
-	        		app.getDirections();
-	        		app.$apply();
-	        	}else{
-	        		dataStore();
-	        	}
+	        	loadLocalData();
 	        });
 		    } 
 		  } else {
@@ -664,7 +682,6 @@ angular.module('app', [])
    * Set up a Firebase with deletion on clicks older than expirySeconds
    * @param {!google.maps.visualization.HeatmapLayer} heatmap The heatmap to
    * which points are added from Firebase.
-   */
    function initFirebase(heatmap) {
 
     // 10 minutes before current time.
@@ -706,6 +723,9 @@ angular.module('app', [])
     heatmapData.removeAt(i);
   });
   }
+  */
+
+
 
   /**
    * Updates the last_message/ path with the current timestamp.
@@ -740,7 +760,20 @@ angular.module('app', [])
 		//store in firebase
 		addToFirebase();
 	}
+	function loadLocalData(){
+		console.log('load Local Data');
+		if(window.localStorage.getItem(app.data.routeId) != null){
+			app.data = angular.fromJson(window.localStorage.getItem(app.data.routeId));
+			app.getDirections();
+			app.$apply();
+		}else{
+			console.log('using default config data');
+			dataStore();
+		}
+	}
+	function loadFirebaseData(){
 
+	}
   /**
    * Adds a click to firebase.
    * @param {Object} data The data to be added to firebase.
@@ -750,7 +783,7 @@ angular.module('app', [])
    	getTimestamp(function(timestamp) {
       // Add the new timestamp to the record data.
       app.data.timestamp = timestamp;
-      var ref = firebase.database().ref('routes/'+app.data.routeId);
+      var ref = firebase.database().ref(app.data.routeId+'/');
       ref.set(angular.toJson(app.data), function(err) {
         if (err) {  // Data was not written to firebase.
         	console.warn(err);
