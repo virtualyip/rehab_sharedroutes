@@ -1,6 +1,7 @@
 $(document).ready(function(){
+	var wideAtleast = 600; //at least 600px
 	var isWide = true;
-	if($(window).width() <= 600 || isMobile()){
+	if($(window).width() <= wideAtleast || isMobile()){
 		isWide = false;
 	}
 
@@ -21,7 +22,7 @@ $(document).ready(function(){
 setScreen();
 
 $(window).resize(function(){
-	if ($(window).width() <= 600 || isMobile()){	
+	if ($(window).width() <= wideAtleast || isMobile()){	
 		if(isWide){
 			isWide = false;
 			setScreen();

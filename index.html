@@ -56,11 +56,11 @@
 
 		<!-- Nav tabs -->
 		<ul class="nav nav-tabs" role="tablist">
-			<li role="presentation" class="active"><a href="#searchboxes" aria-controls="searchboxes" role="tab" data-toggle="tab">設定行程</a></li>
-			<li role="presentation"><a href="#routes" aria-controls="routes" role="tab" data-toggle="tab">收費詳情</a></li>
-			<li id="map-tab" role="presentation"><a href="#map-tab-content" aria-controls="map-tab-content" role="tab" data-toggle="tab">地圖</a></li>
+			<li role="presentation" class="active"><a href="#searchboxes" aria-controls="searchboxes" role="tab" data-toggle="tab"><span class="mobile-hide">設定行程</span><span class="mobile-show">行程</span></a></li>
+			<li role="presentation"><a href="#routes" aria-controls="routes" role="tab" data-toggle="tab"><span class="mobile-hide">收費詳情</span><span class="mobile-show">收費</span></a></li>
+			<li id="map-tab" class="mobile-hide" role="presentation"><a href="#map-tab-content" aria-controls="map-tab-content" role="tab" data-toggle="tab">地圖</a></li>
 			<li id="map-tab" role="presentation">
-				<input type="button" class="btn-danger" value="重設行程" ng-click="reset()" style="margin:10px"></li>
+				<button class="btn-danger" ng-click="reset()" style="margin:10px"><span class="mobile-hide">重設行程</span><span class="mobile-show">重設</span></button></li>
 			</ul>
 
 			<!-- Tab panes -->
@@ -79,7 +79,7 @@
 								<div>
 									<span class="address-label">
 										{{stop.formatted_address}}, {{stop.name}}
-										<span class="glyphicon glyphicon-search img-btn" ng-click="map.setCenter(stop.location)"></span>
+										<span class="glyphicon glyphicon-search img-btn mobile-hide" ng-click="map.setCenter(stop.location)"></span>
 									</span>
 									<span class="searchbox-menu">
 										<span class="glyphicon glyphicon-pencil img-btn" ng-click="editStop(stop, stop_no)"></span>
@@ -111,7 +111,7 @@
 								<!--<button class="btn btn-primary" ng-click="removeStop(stop_no)"> X </button> -->
 								<input type="text" autocomplete-input stop="stop" ng-model="stop._input_address" style="width: 70%;">
 								<span class="searchbox-menu">
-									<button class="btn btn-primary" ng-click="editStop(stop, stop_no)"> OK </button>
+									<button class="btn-primary" ng-click="editStop(stop, stop_no)"> 確定 </button>
 								</span>
 
 								<div class="list-group" style="width: 300px; padding: 0 0 0 30px;">
@@ -145,12 +145,12 @@
 					<div class="searchbox-container searchbox-newstop">
 						<table class="searchbox">
 							<tr>
-								<td class="searchbox-title"><span>請輸入目的地</span></td>
+								<td class="searchbox-title mobile-hide"><span>請輸入目的地</span></td>
 								<td class="searchbox-input"><input type="text" autocomplete-input stop="data.new_stop" ng-model="data.new_stop._input_address" placeholder="選擇目的地或點擊地圖…"></td>
 								<td class="searchbox-btn"><button class="btn btn-default" ng-click="addStop()"> 確定 </button></td>
 							</tr>
 							<tr ng-if="data.new_stop._place">
-								<td class="searchbox-title">選擇上落乘客</td>
+								<td class="searchbox-title mobile-hide"><span>選擇上落乘客</span></td>
 								<td colspan="2">
 									<div class="list-group">
 										<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.pick==null"> 
@@ -183,24 +183,25 @@
 				<div role="tabpanel" class="tab-pane" id="routes" style="padding: 20px;height: 1200px;">
 					<table id="result">
 						<tr>
-							<th><span class="glyphicon glyphicon-user"></span> 乘客</th>
+							<th class="mobile-hide"><span class="glyphicon glyphicon-user"></span> 乘客</th>
 							<th><span class="glyphicon glyphicon-road"></span> 行程</th>
 							<th><span class="glyphicon glyphicon-tag"></span> 預計收費</th>
 						</tr>
 						<tr ng-repeat="customer in data.customers">
-							<td class="customer-col">{{customer.name}}</td>
+							<td class="customer-col mobile-hide">{{customer.name}}</td>
 							<td class="route-col"> 
+								<div class="mobile-show">{{customer.name}}</div>
 								<span style="float: left; padding: 5px 0;">由</span> 
 								<span class="address-label" ng-if="customer.pick != null">
 									{{customer.pick+1+'. '}}
 									{{data.stops[customer.pick].formatted_address}}, {{data.stops[customer.pick].name}} 
-									<span class="glyphicon glyphicon-search img-btn" ng-click="map.setCenter(data.stops[customer.pick].location)"></span>
+									<span class="glyphicon glyphicon-search img-btn mobile-hide" ng-click="map.setCenter(data.stops[customer.pick].location)"></span>
 								</span>
 								<br><span style="float: left; padding: 5px 0;">去</span> 
 								<span class="address-label" ng-if="customer.drop != null">
 									{{customer.drop+1+'. '}}
 									{{data.stops[customer.drop].formatted_address}}, {{data.stops[customer.drop].name}} 
-									<span class="glyphicon glyphicon-search img-btn" ng-click="map.setCenter(data.stops[customer.drop].location)"></span>
+									<span class="glyphicon glyphicon-search img-btn mobile-hide" ng-click="map.setCenter(data.stops[customer.drop].location)"></span>
 								</span> 
 								<br>
 								<span ng-if="customer.totalFee">

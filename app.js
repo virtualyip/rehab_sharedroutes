@@ -258,6 +258,7 @@ angular.module('app', [])
   			hasCustomer = true;
   		}
   	});
+  	/*
   	if(!hasCustomer){
   		app.modal = {
   			header: null,
@@ -267,7 +268,7 @@ angular.module('app', [])
   		$('#messageModal').modal();
   		return console.log("Assign at least one customer");
   	} 
-
+  	*/
   	var stop = {
   		stop_no : data.stops.length + 1,
   		input_address: app.data.new_stop._input_address,
@@ -522,6 +523,14 @@ angular.module('app', [])
   	app.$apply();
 
 		//store data
+		var waypoints = [];
+		result.request.waypoints.forEach(function(waypoint){
+			waypoints.push({location:{
+				lat: waypoint.location.lat(),
+				lng: waypoint.location.lng(),
+			}})
+		})
+		app.data.waypoints = waypoints;
 		dataStore();
 
   	/*
