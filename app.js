@@ -26,20 +26,13 @@ angular.module('app', [])
 	      }
 
 	      console.log("details for input", place);
+	      //scope.stop._input_address = place.formatted_address;
 	      scope.stop._place = place;
 
 	      //UI update
 	      app.map.setCenter(place.geometry.location);
 	      app.map.setZoom( 17 );
-	      if(app.markers[-1] != null){
-	      	app.markers[-1].setPosition(place.geometry.location);
-	      }else{
-	      	var marker = new google.maps.Marker({
-	      		position: place.geometry.location,
-	      		map: app.map,
-	      	});
-	      	app.markers[-1] = marker;
-	      }
+	      app.markers[-1].setPosition(place.geometry.location);
 	      app.$apply();
 
 	      /*
@@ -53,6 +46,7 @@ angular.module('app', [])
 		},
 	};
 })
+/*
 .directive('googleAutocomplete', function () {
 	return {
 		restrict: 'E',
@@ -78,6 +72,7 @@ angular.module('app', [])
 		}
 	};
 })
+*/
 .controller('AppController', ['$scope', function($scope) {
 
 
@@ -99,7 +94,6 @@ angular.module('app', [])
     },
   });
 
-
   var directionsService = new google.maps.DirectionsService;
   var directionsDisplay = new google.maps.DirectionsRenderer({
   	draggable: true,
@@ -109,14 +103,6 @@ angular.module('app', [])
   directionsDisplay.addListener('directions_changed', function() {
   	app.computeTotalDistance(directionsDisplay.getDirections());
   });
-
-  function deleteAllMarkers() {
-  	app.markers.forEach(function(marker){
-  		marker.setMap(null);
-  		marker = null;
-  	}); 
-  	app.markers = [];
-  }
 
   /**
   * default app configuration 
@@ -153,6 +139,13 @@ angular.module('app', [])
 	app.modal = {};
 	window.app = app;
 
+	function deleteAllMarkers() {
+		for(i=0; i<app.markers.length;i++){
+			var marker = app.markers[i];
+			marker.setMap(null);
+		}; 
+	}
+
 	app.init = function(){
 		console.log('init');
 		google.maps.event.addDomListener(window, 'load', initInterface);
@@ -164,6 +157,7 @@ angular.module('app', [])
 			body: "重新設定路程?",
 			callback: function(){
 				deleteAllMarkers();
+				directionsDisplay.setMap(null);
 				app.data.stops = [];
 				app.data.customers = [{name:'乘客1', pick: null, drop: null}, {name:'乘客2', pick: null, drop: null}];
 				$('#messageModal').modal('hide');
@@ -179,60 +173,148 @@ angular.module('app', [])
     //var panel = document.getElementById('panel');
     //map.controls[google.maps.ControlPosition.TOP_LEFT].push(panel);
 
+    var marker = new google.maps.Marker({
+    	position: {lat:0,lng:0},
+    	map: app.map,
+    	draggable: true
+    });
+    marker.addListener('dragend', function(event){
+    	console.log('dragend', event);
+    	var geometry = {
+    		location:{
+    			lat: event.latLng.lat(),
+    			lng: event.latLng.lng(),
+    		}
+    	};
+    	app.getPlaceByGeometry(geometry).then(function(place){
+    		app.markers[-1].setPosition(place.geometry.location);
+    		app.data.stops.forEach(function(stop){
+    			if(stop.isEditing){
+    				stop._input_address = place.formatted_address;
+    				stop._place = place;
+    			}
+    		})
+    		app.data.new_stop._input_address = place.formatted_address;
+    		app.data.new_stop._place = place;
+    		app.$apply();
+    	}).fail(function(status){
+    		if(!place){
+    			app.modal = {
+    				header: null,
+    				body: "未能取得地址",
+    				callback: null,
+    			}
+    			$('#messageModal').modal();
+    			app.$apply();
+    		} 
+    	});
+    });
+    app.markers[-1] = marker;
+
     // Listen for clicks and add the location of the click to firebase.
     map.addListener('click', function(e) {
-    	var geocoder = new google.maps.Geocoder;
     	var geometry = {
     		location:{
     			lat: e.latLng.lat(),
     			lng: e.latLng.lng(),
     		}
     	};
-    	console.log(geometry);
-    	geocoder.geocode(geometry, function(results, status) {
-    		if (status === 'OK') {
-    			if (results[1]) {
-    				var place = results[1];
-    				//console.log(results);
-    				if(app.markers[-1] != null){
-    					app.markers[-1].setPosition(place.geometry.location);
-    				}else{
-    					var marker = new google.maps.Marker({
-    						position: place.geometry.location,
-    						map: app.map,
-    					});
-    					app.markers[-1] = marker;
-    				}
-    				app.data.stops.forEach(function(stop){
-    					if(stop.isEditing){
-    						stop._input_address = place.formatted_address;
-    						stop._place = place;
-    						return;
-    					}
-    				})
-    				app.data.new_stop._input_address = place.formatted_address;
-    				app.data.new_stop._place = place;
-    				app.$apply();
-    			} else {
-    				console.log('No results found');
+    	app.getPlaceByGeometry(geometry).then(function(place){
+    		app.markers[-1].setPosition(place.geometry.location);
+    		app.data.stops.forEach(function(stop){
+    			if(stop.isEditing){
+    				stop._input_address = place.formatted_address;
+    				stop._place = place;
     			}
-    		} else {
-    			console.log('Geocoder failed due to: ' + status);
-    		}
+    		})
+    		app.data.new_stop._input_address = place.formatted_address;
+    		app.data.new_stop._place = place;
+    		app.$apply();
+    	}).fail(function(status){
+    		if(!place){
+    			app.modal = {
+    				header: null,
+    				body: "未能取得地址",
+    				callback: null,
+    			}
+    			$('#messageModal').modal();
+    			app.$apply();
+    		} 
     	});
     });
 
     initAuthentication();
   }
-  app.inputAddressCheck = function(){
-  	if(app.data.new_stop._place == null || app.data.new_stop._input_address != app.data.new_stop._place.name){
-  		console.log("auto predict use input address")
-  		new google.maps.places.AutocompleteService().getPlacePredictions({ 
-  			input: app.data.new_stop._input_address, 
-  			componentRestrictions :{country: 'hk'} 
-  		}, function(results, status){
+  app.inputAddressCheck = function(stop){
+  	/*
+  	var predictAddress = stop._input_address;
+  	console.log(stop._input_address);
+  	//stop._input_address = null;
+  	console.log(stop._input_address);
+  	//avoid checking before auto address selected
+  	setTimeout(function(){
+  		console.log(stop._input_address);
+  		if(stop._input_address == null){
+  			console.log("address not selected from list, auto predict use input address");
+  			new google.maps.places.AutocompleteService().getPlacePredictions({ 
+  				input: predictAddress, 
+  				componentRestrictions :{country: 'hk'} 
+  			}, function(results, status){ 
+  				if (status == google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
+  					new google.maps.places.PlacesService(map).getDetails({
+  						placeId: results[0].place_id
+  					}, function(place, status) {
+  						if (status === google.maps.places.PlacesServiceStatus.OK) {
+  							if(app.markers[-1] != null){
+  								app.markers[-1].setPosition(place.geometry.location);
+  							}else{
+  								var marker = new google.maps.Marker({
+  									position: place.geometry.location,
+  									map: app.map,
+  								});
+  								app.markers[-1] = marker;
+  							}
+  							app.map.setCenter(place.geometry.location);
+  							app.map.setZoom( 17 );
+  							stop._place = place;
+  							stop._input_address = place.formatted_address;
+  							app.$apply();
+  						}else{
+  							app.modal = {
+  								header: null,
+  								body: "地址無效, 請重新輸入",
+  								callback: null,
+  							}
+  							$('#messageModal').modal();
+  							app.$apply();
+  						}
+  					});
+  				}else{
+  					app.modal = {
+  						header: null,
+  						body: "地址無效, 請重新輸入",
+  						callback: null,
+  					}
+  					$('#messageModal').modal();
+  					app.$apply();
+  				}
+  			});
+  		}
+  	},1000);
+  	/*
+  	
+  	new google.maps.places.AutocompleteService().getPlacePredictions({ 
+  		input: app.data.new_stop._input_address, 
+  		componentRestrictions :{country: 'hk'} 
+  	}, function(results, status){ 
+  		if(app.data.new_stop._place == null || app.data.new_stop._input_address != app.data.new_stop._place.name){
   			if (status == google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
   				console.log(results);
+  				for(i=0; i<results.length;i++){
+  					if(app.data.new_stop._input_address == results[i].description){
+  						return; //valid address
+  					}
+  				}
   				new google.maps.places.PlacesService(map).getDetails({
   					placeId: results[0].place_id
   				}, function(place, status) {
@@ -249,7 +331,7 @@ angular.module('app', [])
   						app.map.setCenter(place.geometry.location);
   						app.map.setZoom( 17 );
   						app.data.new_stop._place = place;
-  						app.data.new_stop._input_address = place.name;
+  						app.data.new_stop._input_address = place.formatted_address;
   						app.$apply();
   					}else{
   						app.modal = {
@@ -270,14 +352,30 @@ angular.module('app', [])
   				$('#messageModal').modal();
   				app.$apply();
   			}
-  		});
-  	}
+  		}
+  	});*/
   }
-  app.autocompleteChanged = function(stop, place){
-  	//var deferred = $.Deferred();
-  	//return deferred.promise();
-  	console.log('stop', stop);
-  	console.log('place', place);
+  app.getPlaceByGeometry = function(geometry){
+  	var deferred = $.Deferred();
+
+  	console.log('getPlaceByGeometry', geometry);
+  	var geocoder = new google.maps.Geocoder;
+  	geocoder.geocode(geometry, function(results, status) {
+  		if (status === 'OK') {
+  			console.log("getPlaceByGeometry result", results);
+  			if (results[0]) {
+  				var place = results[0];
+  				return deferred.resolve(place);
+  			} else {
+  				console.log('getPlaceByGeometry', 'No results found');
+  				return deferred.reject('No results found');
+  			}
+  		} else {
+  			console.log('getPlaceByGeometry', 'Geocoder failed due to: ' + status);
+  			return deferred.reject('Geocoder failed due to: ' + status);
+  		}
+  	});
+  	return deferred.promise();
   }
 
   app.addCustomer = function(){
@@ -316,7 +414,7 @@ angular.module('app', [])
   	if(!place){
   		app.modal = {
   			header: null,
-  			body: "地址無效, 請重新輸入",
+  			body: "地址無效, 請重新輸入, 或點擊地圖選擇位置",
   			callback: null,
   		}
   		$('#messageModal').modal();
@@ -351,6 +449,7 @@ angular.module('app', [])
   		stop_no : data.stops.length + 1,
   		input_address: app.data.new_stop._input_address,
   		name: place.name,
+  		remark: app.data.new_stop.remark,
   		formatted_address: place.formatted_address,
   		location : {
   			lat : place.geometry.location.lat(),
@@ -376,9 +475,11 @@ angular.module('app', [])
 		//clear the temp var
 		delete app.data.new_stop._input_address;
 		delete app.data.new_stop._place;
+		app.data.new_stop.remark = null;
 
 		//UI markInfoMarkerOnMap
 		app.markInfoMarkerOnMap(stop, app.data.stops.length-1);
+		app.markers[-1].setPosition({lat:0,lng:0})
 
 		//store data
 		dataStore();
@@ -428,6 +529,9 @@ angular.module('app', [])
 				delete customer._pick;
 				delete customer._drop;
 			});
+			if(stop._remark != stop.remark){
+				hasUpdate = true;
+			}
 			if(hasUpdate){
 				app.updateRouteFee();
 				//store data
@@ -478,6 +582,7 @@ angular.module('app', [])
 			stop.isEditing = true;
 			//create temp var for editing
 			stop._input_address = stop.formatted_address;
+			stop._remark = stop.remark;
 			app.data.customers.forEach(function(customer){
 				if(customer._pick == null){
 					customer._pick = customer.pick;
@@ -576,9 +681,7 @@ angular.module('app', [])
   		}
   	});
   	//temp marker for store new address
-  	if(app.markers[-1] != null){
-  		app.markers[-1].setMap(null);
-  	}
+  	app.markers[-1].setPosition({lat:0,lng:0});
   }
 
   app.computeTotalDistance = function(result) {
@@ -787,8 +890,8 @@ angular.module('app', [])
 		    // User is signed in.
 		    console.log('Logged in!', user);
 		    app.data.isAnonymous = user.isAnonymous;
-		    app.data.routeId = user.uid;
-
+		    //app.data.routeId = user.uid;
+		    app.data.routeId = new Date().getTime(); 
 		    //onAuthSuccess();
 		    app.$apply();
 

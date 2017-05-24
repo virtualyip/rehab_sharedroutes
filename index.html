@@ -72,7 +72,7 @@
 							<div class="searchbox">
 								<div>
 									<span class="address-label">
-										{{stop.formatted_address}}<span ng-if="stop.name">, {{stop.name}}</span>
+										{{stop.formatted_address}}<span ng-if="stop.name">, {{stop.name}}</span><span ng-if="stop.remark"> ( {{stop.remark}} )</span>
 										<span class="glyphicon glyphicon-search img-btn mobile-hide" ng-click="map.setCenter(stop.location)"></span>
 									</span>
 									<span class="searchbox-menu">
@@ -104,6 +104,8 @@
 							<div class="searchbox">
 								<!--<button class="btn btn-primary" ng-click="removeStop(stop_no)"> X </button> -->
 								<input type="text" autocomplete-input stop="stop" changed="autocompleteChanged(stop, place)" ng-model="stop._input_address" style="width: 70%;">
+								<br><input type="text" ng-model="stop.remark" ng-if="stop.location
+								!= null" placeholder="(選填)詳細上落位置或備注" style="width: 70%;">
 								<span class="searchbox-menu">
 									<button class="btn-primary" ng-click="editStop(stop, stop_no)"> 確定 </button>
 								</span>
@@ -144,7 +146,8 @@
 									<!--
 									<google-autocomplete stop="stop" changed="autocompleteChanged(stop, place)"></google-autocomplete>-->
 
-									<input type="text" ng-blur="inputAddressCheck()" autocomplete-input stop="data.new_stop" ng-model="data.new_stop._input_address" placeholder="選擇目的地或點擊地圖…">
+									<input type="text" ng-blur="inputAddressCheck(data.new_stop)" autocomplete-input stop="data.new_stop" ng-model="data.new_stop._input_address" placeholder="選擇目的地或點擊地圖…">
+									<br><input type="text" ng-model="data.new_stop.remark" ng-if="data.new_stop._place != null" placeholder="(選填)詳細上落位置或備注">
 								</td>
 								<td class="searchbox-btn"><button class="btn btn-default" ng-click="addStop()"> 確定 </button></td>
 							</tr>
@@ -191,15 +194,17 @@
 							<td class="route-col"> 
 								<div class="mobile-show">{{customer.name}}</div>
 								<span style="float: left; padding: 5px 0;">由</span> 
+								<span ng-if="customer.pick == null" class="label label-success">未設定上車點</span>
 								<span class="address-label" ng-if="customer.pick != null">
 									{{customer.pick+1+'. '}}
-									{{data.stops[customer.pick].formatted_address}}<span ng-if="data.stops[customer.pick].name">, {{data.stops[customer.pick].name}} </span> 
+									{{data.stops[customer.pick].formatted_address}}<span ng-if="data.stops[customer.pick].name">, {{data.stops[customer.pick].name}} </span>  <span ng-if="data.stops[customer.pick].remark">( {{data.stops[customer.pick].remark}} )</span>
 									<span class="glyphicon glyphicon-search img-btn mobile-hide" ng-click="map.setCenter(data.stops[customer.pick].location)"></span>
 								</span>
 								<br><span style="float: left; padding: 5px 0;">去</span> 
+								<span ng-if="customer.drop == null" class="label label-warning">未設定落車點</span>
 								<span class="address-label" ng-if="customer.drop != null">
 									{{customer.drop+1+'. '}}
-									{{data.stops[customer.drop].formatted_address}}<span ng-if="data.stops[customer.drop].name">, {{data.stops[customer.drop].name}} </span> 
+									{{data.stops[customer.drop].formatted_address}}<span ng-if="data.stops[customer.drop].name">, {{data.stops[customer.drop].name}} </span> <span ng-if="data.stops[customer.drop].remark">( {{data.stops[customer.drop].remark}} )</span>
 									<span class="glyphicon glyphicon-search img-btn mobile-hide" ng-click="map.setCenter(data.stops[customer.drop].location)"></span>
 								</span> 
 								<br>
