@@ -31,14 +31,15 @@ angular.module('app', [])
 	      //UI update
 	      app.map.setCenter(place.geometry.location);
 	      app.map.setZoom( 17 );
-	      var marker = new google.maps.Marker({
-	      	position: place.geometry.location,
-	      	map: app.map,
-	      });
 	      if(app.markers[-1] != null){
-	      	app.markers[-1].setMap(null);
+	      	app.markers[-1].setPosition(place.geometry.location);
+	      }else{
+	      	var marker = new google.maps.Marker({
+	      		position: place.geometry.location,
+	      		map: app.map,
+	      	});
+	      	app.markers[-1] = marker;
 	      }
-	      app.markers[-1] = marker;
 	      app.$apply();
 
 	      /*
@@ -50,6 +51,31 @@ angular.module('app', [])
 	      */
 	    });
 		},
+	};
+})
+.directive('googleAutocomplete', function () {
+	return {
+		restrict: 'E',
+		scope: {'stop': '=', 'changed': '&'},
+		replace: true,        
+		template: "<input type='text' ng-model='stop._input_address'>",
+		link: function (scope, element, attrs) {
+			if(!scope.stop) scope.stop = {};
+			var autocomplete = new google.maps.places.Autocomplete(element[0]);
+			autocomplete.addListener('place_changed', function() {
+				var place = autocomplete.getPlace();
+				if (!place.geometry) {
+	        // User entered the name of a Place that was not suggested and
+	        // pressed the Enter key, or the Place Details request failed.
+	        console.log("No details available for input: '" + place.name + "'");
+	        scope.changed(scope.stop, null);
+	        return;
+	      }
+	      console.log("details for input", place);
+	      scope.stop.place = place;
+	      scope.changed(scope.stop, place);
+	    });
+		}
 	};
 })
 .controller('AppController', ['$scope', function($scope) {
@@ -135,7 +161,7 @@ angular.module('app', [])
 	app.reset = function(){
 		app.modal = {
 			header: null,
-			body: "確定重新設定路程?",
+			body: "重新設定路程?",
 			callback: function(){
 				deleteAllMarkers();
 				app.data.stops = [];
@@ -166,24 +192,26 @@ angular.module('app', [])
     	geocoder.geocode(geometry, function(results, status) {
     		if (status === 'OK') {
     			if (results[1]) {
+    				var place = results[1];
     				//console.log(results);
-    				var marker = new google.maps.Marker({
-    					position: results[1].geometry.location,
-    					map: map,
-    				});
     				if(app.markers[-1] != null){
-    					app.markers[-1].setMap(null);
+    					app.markers[-1].setPosition(place.geometry.location);
+    				}else{
+    					var marker = new google.maps.Marker({
+    						position: place.geometry.location,
+    						map: app.map,
+    					});
+    					app.markers[-1] = marker;
     				}
-    				app.markers[-1] = marker;
     				app.data.stops.forEach(function(stop){
     					if(stop.isEditing){
-    						stop._input_address = results[1].formatted_address;
-    						stop._place = results[1];
+    						stop._input_address = place.formatted_address;
+    						stop._place = place;
     						return;
     					}
     				})
-    				app.data.new_stop._input_address = results[1].formatted_address;
-    				app.data.new_stop._place = results[1];
+    				app.data.new_stop._input_address = place.formatted_address;
+    				app.data.new_stop._place = place;
     				app.$apply();
     			} else {
     				console.log('No results found');
@@ -196,9 +224,60 @@ angular.module('app', [])
 
     initAuthentication();
   }
-  app.getPlaceByLatlng = function(geometry){
-  	var deferred = $.Deferred();
-  	return deferred.promise();
+  app.inputAddressCheck = function(){
+  	if(app.data.new_stop._place == null || app.data.new_stop._input_address != app.data.new_stop._place.name){
+  		console.log("auto predict use input address")
+  		new google.maps.places.AutocompleteService().getPlacePredictions({ 
+  			input: app.data.new_stop._input_address, 
+  			componentRestrictions :{country: 'hk'} 
+  		}, function(results, status){
+  			if (status == google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
+  				console.log(results);
+  				new google.maps.places.PlacesService(map).getDetails({
+  					placeId: results[0].place_id
+  				}, function(place, status) {
+  					if (status === google.maps.places.PlacesServiceStatus.OK) {
+  						if(app.markers[-1] != null){
+  							app.markers[-1].setPosition(place.geometry.location);
+  						}else{
+  							var marker = new google.maps.Marker({
+  								position: place.geometry.location,
+  								map: app.map,
+  							});
+  							app.markers[-1] = marker;
+  						}
+  						app.map.setCenter(place.geometry.location);
+  						app.map.setZoom( 17 );
+  						app.data.new_stop._place = place;
+  						app.data.new_stop._input_address = place.name;
+  						app.$apply();
+  					}else{
+  						app.modal = {
+  							header: null,
+  							body: "地址無效, 請重新輸入",
+  							callback: null,
+  						}
+  						$('#messageModal').modal();
+  						app.$apply();
+  					}
+  				});
+  			}else{
+  				app.modal = {
+  					header: null,
+  					body: "地址無效, 請重新輸入",
+  					callback: null,
+  				}
+  				$('#messageModal').modal();
+  				app.$apply();
+  			}
+  		});
+  	}
+  }
+  app.autocompleteChanged = function(stop, place){
+  	//var deferred = $.Deferred();
+  	//return deferred.promise();
+  	console.log('stop', stop);
+  	console.log('place', place);
   }
 
   app.addCustomer = function(){
@@ -210,15 +289,14 @@ angular.module('app', [])
   	app.data.customers.push(newCustomer);
   }
   app.removeCustomer = function(customer){
+  	var totalCustomers = app.data.customers.length;
+  	if(totalCustomers <= app.config.minRoutes)
+  		return; 
 
   	app.modal = {
   		header: null,
-  		body: "確定移除此 "+customer.name +" ?",
+  		body: "移除 "+customer.name +" ?",
   		callback: function(){
-  			var totalCustomers = app.data.customers.length;
-  			if(totalCustomers <= app.config.minRoutes)
-  				return; 
-
   			for(i = 0; i < totalCustomers; i++){
   				if(app.data.customers[i].$$hashKey === customer.$$hashKey){
   					app.data.customers.splice(i, 1);
@@ -551,7 +629,7 @@ angular.module('app', [])
   	});
   	*/
   }
-
+  /*
   function getDistance(origin, destination){
 
   	var deferred = $.Deferred();
@@ -576,10 +654,10 @@ angular.module('app', [])
 
   			var originList = response.originAddresses;
   			var destinationList = response.destinationAddresses;
-				/*
+				
   			var outputDiv = document.getElementById('output');
   			outputDiv.innerHTML = '';
-  			*/
+  			
   			deleteMarkers(markersArray);
 
   			var destinationIcon = 'https://chart.googleapis.com/chart?' +
@@ -615,11 +693,11 @@ angular.module('app', [])
 
   					geocoder.geocode({'address': destinationList[j]},
   						showGeocodedAddressOnMap(true));
-  					/*
+  					
   					outputDiv.innerHTML += originList[i] + ' to ' + destinationList[j] +
   					': ' + results[j].distance.text + ' in ' +
   					results[j].duration.text + '<br>';
-  					*/
+  					
   				}
   			}
 
@@ -648,6 +726,7 @@ angular.module('app', [])
   	service.getDistanceMatrix(apiConfig, apiResponse);
   	return deferred.promise();
   }
+  */
 
   app.updateRouteFee = function(){
   	app.data.customers.forEach(function(customer){

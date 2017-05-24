@@ -46,21 +46,15 @@
 					<span class="input-group-addon"><input type="submit" class="btn-default" value="查詢"></span>
 				</div>
 			</form>
-			<!-- Button trigger modal -->
-			<!-- 
-				<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#routesControlModal">
-				
-				</button>
-			-->
 		</div>
 
 		<!-- Nav tabs -->
 		<ul class="nav nav-tabs" role="tablist">
 			<li role="presentation" class="active"><a href="#searchboxes" aria-controls="searchboxes" role="tab" data-toggle="tab"><span class="mobile-hide">設定行程</span><span class="mobile-show">行程</span></a></li>
-			<li role="presentation"><a href="#routes" aria-controls="routes" role="tab" data-toggle="tab"><span class="mobile-hide">收費詳情</span><span class="mobile-show">收費</span></a></li>
+			<li role="presentation"><a href="#routes" aria-controls="routes" role="tab" data-toggle="tab"><span class="mobile-show">收費</span><span class="mobile-hide">收費詳情</span></a></li>
 			<li id="map-tab" class="mobile-hide" role="presentation"><a href="#map-tab-content" aria-controls="map-tab-content" role="tab" data-toggle="tab">地圖</a></li>
 			<li id="map-tab" role="presentation">
-				<button class="btn-danger" ng-click="reset()" style="margin:10px"><span class="mobile-hide">重設行程</span><span class="mobile-show">重設</span></button></li>
+				<button class="btn-danger" ng-click="reset()" style="margin:10px"><span class="mobile-show">重設</span><span class="mobile-hide">重設行程</span></button></li>
 			</ul>
 
 			<!-- Tab panes -->
@@ -78,7 +72,7 @@
 							<div class="searchbox">
 								<div>
 									<span class="address-label">
-										{{stop.formatted_address}}, {{stop.name}}
+										{{stop.formatted_address}}<span ng-if="stop.name">, {{stop.name}}</span>
 										<span class="glyphicon glyphicon-search img-btn mobile-hide" ng-click="map.setCenter(stop.location)"></span>
 									</span>
 									<span class="searchbox-menu">
@@ -109,24 +103,24 @@
 							</div>
 							<div class="searchbox">
 								<!--<button class="btn btn-primary" ng-click="removeStop(stop_no)"> X </button> -->
-								<input type="text" autocomplete-input stop="stop" ng-model="stop._input_address" style="width: 70%;">
+								<input type="text" autocomplete-input stop="stop" changed="autocompleteChanged(stop, place)" ng-model="stop._input_address" style="width: 70%;">
 								<span class="searchbox-menu">
 									<button class="btn-primary" ng-click="editStop(stop, stop_no)"> 確定 </button>
 								</span>
 
 								<div class="list-group" style="width: 300px; padding: 0 0 0 30px;">
-									<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.pick==stop_no || customer.pick==null"> 
-										<span class="input-group-addon" ng-click="customer._pick==stop_no ? customer._pick=null : customer._pick=stop_no;" ng-class="customer._pick==stop_no ? 'active' : '';">
-											<input type="checkbox" aria-label="..." ng-checked="customer._pick==stop_no"> <span class="glyphicon glyphicon-export"></span> 上車: 
+									<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.pick==stop_no || customer.pick==null" ng-class="customer._pick==stop_no ? 'active' : '';"> 
+										<span class="input-group-addon" ng-click="customer._pick==stop_no ? customer._pick=null : customer._pick=stop_no;">
+											<input type="checkbox" aria-label="{{customer.name}}" ng-checked="customer._pick==stop_no"> <span class="glyphicon glyphicon-export"></span> 上車: 
 										</span>
 										<input type="text" class="form-control" ng-model="customer.name" size="10">
 										<span class="input-group-addon">
 											<button class="delete-btn" ng-click="removeCustomer(customer);"> <span class="glyphicon glyphicon-trash"></span> </button>
 										</span>
 									</div>
-									<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.drop==stop_no || (customer.pick !=null && customer.drop==null && stop_no > customer.pick)">
-										<span class="input-group-addon" ng-click="customer._drop==stop_no ? customer._drop=null : customer._drop=stop_no;" ng-class="customer._drop==stop_no ? 'active' : '';">
-											<input type="checkbox" aria-label="..." ng-checked="customer._drop==stop_no"> <span class="glyphicon glyphicon-import"></span> 下車: 
+									<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.drop==stop_no || (customer.pick !=null && customer.drop==null && stop_no > customer.pick)" ng-class="customer._drop==stop_no ? 'active' : '';">
+										<span class="input-group-addon" ng-click="customer._drop==stop_no ? customer._drop=null : customer._drop=stop_no;">
+											<input type="checkbox" aria-label="{{customer.name}}" ng-checked="customer._drop==stop_no"> <span class="glyphicon glyphicon-import"></span> 下車: 
 										</span>
 										<input type="text" class="form-control" ng-model="customer.name" size="10">
 										<span class="input-group-addon">
@@ -146,7 +140,12 @@
 						<table class="searchbox">
 							<tr>
 								<td class="searchbox-title mobile-hide"><span>請輸入目的地</span></td>
-								<td class="searchbox-input"><input type="text" autocomplete-input stop="data.new_stop" ng-model="data.new_stop._input_address" placeholder="選擇目的地或點擊地圖…"></td>
+								<td class="searchbox-input">
+									<!--
+									<google-autocomplete stop="stop" changed="autocompleteChanged(stop, place)"></google-autocomplete>-->
+
+									<input type="text" ng-blur="inputAddressCheck()" autocomplete-input stop="data.new_stop" ng-model="data.new_stop._input_address" placeholder="選擇目的地或點擊地圖…">
+								</td>
 								<td class="searchbox-btn"><button class="btn btn-default" ng-click="addStop()"> 確定 </button></td>
 							</tr>
 							<tr ng-if="data.new_stop._place">
@@ -155,7 +154,7 @@
 									<div class="list-group">
 										<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.pick==null"> 
 											<span class="input-group-addon" ng-click="customer._pick==data.stops.length?customer._pick=null:customer._pick=data.stops.length;" ng-class="customer._pick==data.stops.length?'active':''">
-												<input type="checkbox" aria-label="..." ng-checked="customer._pick==data.stops.length">  <span class="glyphicon glyphicon-export"></span> 上車: 
+												<input type="checkbox" aria-label="{{customer.name}}" ng-checked="customer._pick==data.stops.length">  <span class="glyphicon glyphicon-export"></span> 上車: 
 											</span>
 											<input type="text" class="form-control" ng-model="customer.name" size="10">
 											<span class="input-group-addon">
@@ -164,7 +163,7 @@
 										</div>
 										<div class="input-group customer-input" ng-repeat="customer in data.customers" ng-if="customer.pick!=null && customer.drop==null">
 											<span class="input-group-addon" ng-click="customer._drop==data.stops.length?customer._drop=null:customer._drop=data.stops.length;" ng-class="customer._drop==data.stops.length?'active':''">
-												<input type="checkbox" aria-label="..." ng-checked="customer._drop==data.stops.length">  <span class="glyphicon glyphicon-import"></span> 下車: 
+												<input type="checkbox" aria-label="{{customer.name}}" ng-checked="customer._drop==data.stops.length">  <span class="glyphicon glyphicon-import"></span> 下車: 
 											</span>
 											<input type="text" class="form-control" ng-model="customer.name" size="10">
 											<span class="input-group-addon">
@@ -194,13 +193,13 @@
 								<span style="float: left; padding: 5px 0;">由</span> 
 								<span class="address-label" ng-if="customer.pick != null">
 									{{customer.pick+1+'. '}}
-									{{data.stops[customer.pick].formatted_address}}, {{data.stops[customer.pick].name}} 
+									{{data.stops[customer.pick].formatted_address}}<span ng-if="data.stops[customer.pick].name">, {{data.stops[customer.pick].name}} </span> 
 									<span class="glyphicon glyphicon-search img-btn mobile-hide" ng-click="map.setCenter(data.stops[customer.pick].location)"></span>
 								</span>
 								<br><span style="float: left; padding: 5px 0;">去</span> 
 								<span class="address-label" ng-if="customer.drop != null">
 									{{customer.drop+1+'. '}}
-									{{data.stops[customer.drop].formatted_address}}, {{data.stops[customer.drop].name}} 
+									{{data.stops[customer.drop].formatted_address}}<span ng-if="data.stops[customer.drop].name">, {{data.stops[customer.drop].name}} </span> 
 									<span class="glyphicon glyphicon-search img-btn mobile-hide" ng-click="map.setCenter(data.stops[customer.drop].location)"></span>
 								</span> 
 								<br>
@@ -245,7 +244,7 @@
 		<!-- Google Map -->
 
 		<!-- Modal -->
-		<div class="modal fade" id="messageModal" tabindex="-1" role="dialog" aria-labelledby="modalLabel">
+		<div class="modal fade" id="messageModal" tabindex="-1" role="dialog" aria-labelledby="">
 			<div class="modal-dialog modal-sm" role="document">
 				<div class="modal-content">
 					<div class="modal-header" ng-if="modal.header">
